@@ -89,7 +89,9 @@
           </label>
           <label>
             Money spent points (day, dollars)
-            <textarea id="savingsNodes" rows="5" placeholder="Type one point per line, e.g. 3, 18"></textarea>
+            <textarea id="savingsNodes" rows="5" placeholder="0, 0
+3, 18
+10, 29"></textarea>
           </label>
           <div class="node-editor" aria-label="Money spent graph node editor">
             <label>
@@ -117,8 +119,8 @@
             <article><span>Next milestone</span><strong id="nextMilestone">7d</strong><small id="milestoneEta">soon</small></article>
           </div>
           <div class="chart-card">
-            <div class="chart-title"><h3>Money spent tracker</h3><span>blue actual · green average · click chart to choose date/time/count</span></div>
-            <canvas id="savingsChart" width="1200" height="500" aria-label="Money spent line chart; click to add a spending point" role="img"></canvas>
+            <div class="chart-title"><h3>Money spent tracker</h3><span>blue actual · green average</span></div>
+            <canvas id="savingsChart" width="900" height="340" aria-label="Money spent line chart" role="img"></canvas>
           </div>
         </section>
       </div>
@@ -134,7 +136,9 @@
         <form class="panel controls" id="cravingForm">
           <label>
             Craving points (day, score 0-10)
-            <textarea id="cravingNodes" rows="5" placeholder="Type one score per line, e.g. 1, 6"></textarea>
+            <textarea id="cravingNodes" rows="5" placeholder="0, 8
+1, 6
+7, 3"></textarea>
           </label>
           <div class="node-editor" aria-label="Craving graph node editor">
             <label>
@@ -160,8 +164,8 @@
             <article><span>Trend</span><strong id="cravingTrend">—</strong><small>latest vs first</small></article>
           </div>
           <div class="chart-card">
-            <div class="chart-title"><h3>Craving instances</h3><span>0 to 10 scale · click chart to choose date/time/count</span></div>
-            <canvas id="cravingChart" width="1200" height="500" aria-label="Craving score line chart; click to add a craving point" role="img"></canvas>
+            <div class="chart-title"><h3>Craving instances</h3><span>0 to 10 scale</span></div>
+            <canvas id="cravingChart" width="900" height="340" aria-label="Craving score line chart" role="img"></canvas>
           </div>
         </section>
       </div>
@@ -224,7 +228,9 @@
             </label>
             <label>
               Absorption nodes (hour, amount)
-              <textarea id="absorptionNodes" rows="4" placeholder="Auto-filled when you add dated nodes; you can also type hour, amount"></textarea>
+              <textarea id="absorptionNodes" rows="4" placeholder="0, 10
+2.5, 8
+8.25, 5"></textarea>
             </label>
           </div>
           <div class="node-editor absorption-node-editor" aria-label="Absorption graph node editor">
@@ -261,9 +267,9 @@
             <article><span>Time to 5%</span><strong id="clearanceTime">0h</strong><small>about 4.32 half-lives</small></article>
           </div>
           <div class="chart-card">
-            <div class="chart-title"><h3>Absorption + elimination curve</h3><span id="absorptionWindowLabel">24 hour view · click chart to choose date/time/count</span></div>
+            <div class="chart-title"><h3>Absorption + elimination curve</h3><span id="absorptionWindowLabel">24 hour view</span></div>
             <p class="time-context" id="usageTimeContext">Usage time shown in your device timezone.</p>
-            <canvas id="absorptionChart" width="1200" height="520" aria-label="Absorption and half-life line chart; click to add an absorption node" role="img"></canvas>
+            <canvas id="absorptionChart" width="900" height="360" aria-label="Absorption and half-life line chart" role="img"></canvas>
           </div>
         </section>
       </div>
@@ -309,39 +315,6 @@
   <footer>
     <p>Quikter is a local-first concept for people who want clear quit math without surrendering their data.</p>
   </footer>
-
-
-  <div class="graph-modal" id="graphPointModal" hidden>
-    <form class="graph-modal-card" id="graphPointForm" aria-label="Add graph point">
-      <div class="chart-title">
-        <h3 id="graphPointTitle">Add graph point</h3>
-        <button class="button ghost small-button" type="button" id="closeGraphPointModal">Close</button>
-      </div>
-      <p class="field-note" id="graphPointHint">Choose the date, time, and count for this graph point.</p>
-      <div class="graph-modal-grid">
-        <label>
-          Date
-          <input id="graphPointDate" type="date" required />
-        </label>
-        <label>
-          Hour
-          <input id="graphPointHour" type="number" min="0" max="23" step="1" required />
-        </label>
-        <label>
-          Minute
-          <input id="graphPointMinute" type="number" min="0" max="59" step="1" required />
-        </label>
-        <label>
-          <span id="graphPointCountLabel">Count</span>
-          <input id="graphPointCount" type="number" min="0" step="0.01" required />
-        </label>
-      </div>
-      <div class="control-row">
-        <button class="button primary" type="submit">Add point</button>
-        <button class="button ghost" type="button" id="cancelGraphPointModal">Cancel</button>
-      </div>
-    </form>
-  </div>
 
   <script src="script.js"></script>
 </body>

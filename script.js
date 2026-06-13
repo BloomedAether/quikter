@@ -77,25 +77,12 @@ const elements = {
   absorptionWindowLabel: document.querySelector('#absorptionWindowLabel'),
   usageTimeContext: document.querySelector('#usageTimeContext'),
   absorptionChart: document.querySelector('#absorptionChart'),
-  graphPointModal: document.querySelector('#graphPointModal'),
-  graphPointForm: document.querySelector('#graphPointForm'),
-  graphPointTitle: document.querySelector('#graphPointTitle'),
-  graphPointHint: document.querySelector('#graphPointHint'),
-  graphPointDate: document.querySelector('#graphPointDate'),
-  graphPointHour: document.querySelector('#graphPointHour'),
-  graphPointMinute: document.querySelector('#graphPointMinute'),
-  graphPointCountLabel: document.querySelector('#graphPointCountLabel'),
-  graphPointCount: document.querySelector('#graphPointCount'),
-  closeGraphPointModal: document.querySelector('#closeGraphPointModal'),
-  cancelGraphPointModal: document.querySelector('#cancelGraphPointModal'),
 };
 
 const currency = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 });
 const wholeNumber = new Intl.NumberFormat('en-US', { maximumFractionDigits: 0 });
 const decimalNumber = new Intl.NumberFormat('en-US', { maximumFractionDigits: 2 });
 let currentSubstanceId = 'nicotine';
-const chartStates = new WeakMap();
-let pendingGraphPoint = null;
 
 function todayISO() {
   return new Date().toISOString().slice(0, 10);
@@ -434,12 +421,7 @@ function upsertAbsorptionNodeFromDateTime() {
   const startDate = usageDate(getAbsorptionModelFromForm());
   const hourOffset = Math.max(0, (nodeDate.getTime() - startDate.getTime()) / (60 * 60 * 1000));
   elements.absorptionNodeDate.value = dateValue;
-  const didUpdate = upsertGraphNode(elements.absorptionNodes, { value: hourOffset }, elements.absorptionNodeY);
-  if (didUpdate) {
-    elements.absorptionNodeHour.value = '';
-    elements.absorptionNodeMinute.value = '';
-  }
-  return didUpdate;
+  return upsertGraphNode(elements.absorptionNodes, { value: hourOffset }, elements.absorptionNodeY);
 }
 
 function usageDate(model) {
@@ -471,7 +453,6 @@ function drawLineChart(canvas, points, config) {
   const xMax = Math.max(...allXPoints.map((point) => point.x), 1);
   const allYPoints = [...points, ...(config.secondaryPoints || [])];
   const yMax = config.fixedYMax || Math.max(...allYPoints.map((point) => point.y), 1);
-  chartStates.set(canvas, { padding, xMax, yMax });
 
   ctx.clearRect(0, 0, width, height);
   ctx.fillStyle = '#ffffff';
@@ -551,120 +532,6 @@ function drawLineChart(canvas, points, config) {
   ctx.fillText(config.xLabelEnd, width - padding - 46, height - 14);
 }
 
-function pointFromCanvasClick(canvas, event, options = {}) {
-  const state = chartStates.get(canvas);
-  if (!state) return null;
-
-  const rect = canvas.getBoundingClientRect();
-  const canvasX = ((event.clientX - rect.left) / rect.width) * canvas.width;
-  const canvasY = ((event.clientY - rect.top) / rect.height) * canvas.height;
-  const plotWidth = canvas.width - state.padding * 2;
-  const plotHeight = canvas.height - state.padding * 2;
-  const xRatio = Math.min(1, Math.max(0, (canvasX - state.padding) / plotWidth));
-  const yRatio = Math.min(1, Math.max(0, (canvas.height - state.padding - canvasY) / plotHeight));
-  const x = Number((xRatio * state.xMax).toFixed(options.xPrecision ?? 2));
-  const rawY = yRatio * state.yMax;
-  const yMax = options.yMax ?? state.yMax;
-  const y = Number(Math.min(yMax, Math.max(0, rawY)).toFixed(options.yPrecision ?? 2));
-  return { x, y };
-}
-
-function addPointToTextareaFromCanvas(canvas, textarea, event, options = {}) {
-  const point = pointFromCanvasClick(canvas, event, options);
-  if (!point) return false;
-  const nodes = parseGraphNodes(textarea.value);
-  nodes.push(point);
-  textarea.value = formatGraphNodes(nodes.sort((a, b) => a.x - b.x));
-  textarea.dispatchEvent(new Event('input', { bubbles: true }));
-  return true;
-}
-
-function syncAbsorptionDateFieldsFromHourOffset(hourOffset) {
-  const startDate = usageDate(getAbsorptionModelFromForm());
-  const nodeDate = new Date(startDate.getTime() + hourOffset * 60 * 60 * 1000);
-  elements.absorptionNodeDate.value = new Date(nodeDate.getTime() - nodeDate.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
-  elements.absorptionNodeHour.value = nodeDate.getHours();
-  elements.absorptionNodeMinute.value = nodeDate.getMinutes();
-}
-
-function localDateInputValue(date) {
-  return new Date(date.getTime() - date.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
-}
-
-function dateFromParts(dateValue, hourValue, minuteValue) {
-  const hour = Math.max(0, Math.min(23, Number(hourValue) || 0));
-  const minute = Math.max(0, Math.min(59, Number(minuteValue) || 0));
-  return new Date(`${dateValue}T${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}:00`);
-}
-
-function daysBetweenDates(date, baseDateValue) {
-  const baseDate = new Date(`${baseDateValue}T00:00:00`);
-  return Math.max(0, (date.getTime() - baseDate.getTime()) / dayMs);
-}
-
-function openGraphPointModal(kind, canvas, event) {
-  const point = pointFromCanvasClick(canvas, event, {
-    xPrecision: kind === 'absorption' ? 2 : 1,
-    yPrecision: kind === 'craving' ? 1 : 2,
-    yMax: kind === 'craving' ? 10 : undefined,
-  });
-  if (!point) return;
-
-  const now = new Date();
-  pendingGraphPoint = { kind, point };
-  elements.graphPointTitle.textContent = `Add ${kind} point`;
-  elements.graphPointCountLabel.textContent = kind === 'money' ? 'Money spent' : kind === 'craving' ? 'Craving count' : 'Usage count';
-  elements.graphPointHint.textContent = kind === 'absorption'
-    ? 'Pick the usage date/time and amount for this absorption node.'
-    : 'Pick the date/time and count for this graph point.';
-
-  if (kind === 'absorption') {
-    const startDate = usageDate(getAbsorptionModelFromForm());
-    const date = new Date(startDate.getTime() + point.x * 60 * 60 * 1000);
-    elements.graphPointDate.value = localDateInputValue(date);
-    elements.graphPointHour.value = date.getHours();
-    elements.graphPointMinute.value = date.getMinutes();
-  } else {
-    const baseDate = getQuitModelFromForm().quitDate || todayISO();
-    const date = new Date(new Date(`${baseDate}T00:00:00`).getTime() + point.x * dayMs);
-    elements.graphPointDate.value = localDateInputValue(date);
-    elements.graphPointHour.value = date.getHours();
-    elements.graphPointMinute.value = date.getMinutes();
-  }
-
-  elements.graphPointCount.value = point.y;
-  elements.graphPointModal.hidden = false;
-  elements.graphPointCount.focus();
-}
-
-function closeGraphPointModal() {
-  pendingGraphPoint = null;
-  elements.graphPointModal.hidden = true;
-}
-
-function submitGraphPoint() {
-  if (!pendingGraphPoint) return false;
-  const date = dateFromParts(elements.graphPointDate.value, elements.graphPointHour.value, elements.graphPointMinute.value);
-  const count = Math.max(0, Number(elements.graphPointCount.value) || 0);
-
-  if (pendingGraphPoint.kind === 'money') {
-    const x = daysBetweenDates(date, getQuitModelFromForm().quitDate || todayISO());
-    upsertGraphNode(elements.savingsNodes, { value: x }, { value: count });
-  } else if (pendingGraphPoint.kind === 'craving') {
-    const x = daysBetweenDates(date, getQuitModelFromForm().quitDate || todayISO());
-    upsertGraphNode(elements.cravingNodes, { value: x }, { value: Math.min(10, count) });
-  } else {
-    const startDate = usageDate(getAbsorptionModelFromForm());
-    const x = Math.max(0, (date.getTime() - startDate.getTime()) / (60 * 60 * 1000));
-    upsertGraphNode(elements.absorptionNodes, { value: x }, { value: count });
-    syncAbsorptionDateFieldsFromHourOffset(x);
-    elements.absorptionNodeY.value = count;
-  }
-
-  closeGraphPointModal();
-  return true;
-}
-
 function start() {
   populateSubstanceOptions();
 
@@ -697,10 +564,6 @@ function start() {
     upsertGraphNode(elements.savingsNodes, elements.savingsNodeX, elements.savingsNodeY);
   });
 
-  elements.savingsChart.addEventListener('click', (event) => {
-    openGraphPointModal('money', elements.savingsChart, event);
-  });
-
   elements.resetButton.addEventListener('click', () => {
     localStorage.removeItem(quitStorageKey);
     const resetModel = loadQuitModel();
@@ -721,10 +584,6 @@ function start() {
 
   elements.upsertCravingNode.addEventListener('click', () => {
     upsertGraphNode(elements.cravingNodes, elements.cravingNodeX, elements.cravingNodeY);
-  });
-
-  elements.cravingChart.addEventListener('click', (event) => {
-    openGraphPointModal('craving', elements.cravingChart, event);
   });
 
   elements.resetCravingButton.addEventListener('click', () => {
@@ -758,21 +617,6 @@ function start() {
 
   elements.upsertAbsorptionNode.addEventListener('click', () => {
     upsertAbsorptionNodeFromDateTime();
-  });
-
-  elements.absorptionChart.addEventListener('click', (event) => {
-    openGraphPointModal('absorption', elements.absorptionChart, event);
-  });
-
-  elements.graphPointForm.addEventListener('submit', (event) => {
-    event.preventDefault();
-    submitGraphPoint();
-  });
-
-  elements.closeGraphPointModal.addEventListener('click', closeGraphPointModal);
-  elements.cancelGraphPointModal.addEventListener('click', closeGraphPointModal);
-  elements.graphPointModal.addEventListener('click', (event) => {
-    if (event.target === elements.graphPointModal) closeGraphPointModal();
   });
 
   elements.resetAbsorptionButton.addEventListener('click', () => {
