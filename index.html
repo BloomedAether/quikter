@@ -1,1 +1,348 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Quikter | Local quit math</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header class="hero" id="top">
+    <nav class="topbar" aria-label="Primary navigation">
+      <a class="brand" href="#top" aria-label="Quikter home">
+        <span class="brand-mark">Q</span>
+        <span>Quikter</span>
+      </a>
+      <div class="nav-links">
+        <a href="#tracker">Money tracker</a>
+        <a href="#cravings">Cravings</a>
+        <a href="#absorption">Absorption graph</a>
+        <a href="#time">Time</a>
+        <a href="#privacy">Local data</a>
+      </div>
+    </nav>
 
+    <section class="hero-grid">
+      <div class="hero-copy">
+        <p class="eyebrow">Private math for quitting</p>
+        <h1>Whiteboard-clean quit tracking with blue, local-first graphs.</h1>
+        <p class="lede">Quikter models streaks, real spending, craving instances, substance half-lives, and absorption curves directly in your browser. No account, no cloud database, and no server needed.</p>
+        <div class="hero-actions">
+          <a class="button primary" href="#tracker">Start modeling</a>
+          <a class="button secondary" href="#absorption">Graph absorption</a>
+        </div>
+      </div>
+      <aside class="stat-card" aria-label="Local progress summary">
+        <div class="card-header">
+          <span>Local dashboard</span>
+          <strong id="heroStreak">0 days</strong>
+        </div>
+        <div class="pulse-chart" aria-hidden="true">
+          <span></span><span></span><span></span><span></span><span></span>
+        </div>
+        <div class="mini-stats">
+          <span><b id="heroSaved">$0</b> spent</span>
+          <span><b id="heroAvoided">$0</b> avg/day</span>
+        </div>
+      </aside>
+    </section>
+  </header>
+
+  <main>
+    <section class="feature-strip" aria-label="Product highlights">
+      <article>
+        <span class="icon">∑</span>
+        <h2>Quit equations</h2>
+        <p>Track streak, real spending entries, craving instances, milestones, and averages from transparent formulas.</p>
+      </article>
+      <article>
+        <span class="icon">λ</span>
+        <h2>Half-life curves</h2>
+        <p>Select a substance preset or enter a custom half-life to estimate elimination over time.</p>
+      </article>
+      <article>
+        <span class="icon">⌂</span>
+        <h2>Computer-owned data</h2>
+        <p>All demo settings persist in this browser's local storage until you wipe them.</p>
+      </article>
+    </section>
+
+    <section id="tracker" class="workspace">
+      <div class="section-heading">
+        <p class="eyebrow">Money tracker</p>
+        <h2>Track what you actually spend.</h2>
+        <p>Enter quit date and real spending points. Quikter plots your entered spending and a separate green average-spend line without auto-creating savings.</p>
+      </div>
+
+      <div class="tracker-layout">
+        <form class="panel controls" id="quitForm">
+          <label>
+            Habit name
+            <input id="habitName" type="text" value="Nicotine" maxlength="40" />
+          </label>
+          <label>
+            Quit date
+            <input id="quitDate" type="date" />
+          </label>
+          <label>
+            Money spent points (day, dollars)
+            <textarea id="savingsNodes" rows="5" placeholder="Type one point per line, e.g. 3, 18"></textarea>
+          </label>
+          <div class="node-editor" aria-label="Money spent graph node editor">
+            <label>
+              Spent day
+              <input id="savingsNodeX" type="number" min="0" step="0.1" placeholder="Day" />
+            </label>
+            <label>
+              Dollars spent
+              <input id="savingsNodeY" type="number" min="0" step="0.01" placeholder="Amount" />
+            </label>
+            <button class="button secondary" type="button" id="upsertSavingsNode">Add / update spent</button>
+          </div>
+          <p class="field-note">Add real spend entries only. The blue line is entered spending; the green line is the average dollars per day from those entries.</p>
+          <div class="control-row">
+            <button class="button primary" type="submit">Save locally</button>
+            <button class="button ghost" type="button" id="resetButton">Wipe demo data</button>
+          </div>
+        </form>
+
+        <section class="panel dashboard" aria-live="polite">
+          <div class="metric-grid">
+            <article><span>Current streak</span><strong id="streakDays">0</strong><small>days quit</small></article>
+            <article><span>Total spent</span><strong id="moneySaved">$0</strong><small>from entries</small></article>
+            <article><span>Average spent</span><strong id="usesAvoided">$0</strong><small>per day</small></article>
+            <article><span>Next milestone</span><strong id="nextMilestone">7d</strong><small id="milestoneEta">soon</small></article>
+          </div>
+          <div class="chart-card">
+            <div class="chart-title"><h3>Money spent tracker</h3><span>blue actual · green average · click chart to choose date/time/count</span></div>
+            <canvas id="savingsChart" width="1200" height="500" aria-label="Money spent line chart; click to add a spending point" role="img"></canvas>
+          </div>
+        </section>
+      </div>
+    </section>
+
+    <section id="cravings" class="workspace">
+      <div class="section-heading">
+        <p class="eyebrow">Craving graph</p>
+        <h2>Track craving instances separately.</h2>
+        <p>Add day-by-day craving scores from 0 to 10. These are separate from money and absorption.</p>
+      </div>
+      <div class="tracker-layout">
+        <form class="panel controls" id="cravingForm">
+          <label>
+            Craving points (day, score 0-10)
+            <textarea id="cravingNodes" rows="5" placeholder="Type one score per line, e.g. 1, 6"></textarea>
+          </label>
+          <div class="node-editor" aria-label="Craving graph node editor">
+            <label>
+              Craving day
+              <input id="cravingNodeX" type="number" min="0" step="0.1" placeholder="Day" />
+            </label>
+            <label>
+              Score
+              <input id="cravingNodeY" type="number" min="0" max="10" step="0.1" placeholder="0-10" />
+            </label>
+            <button class="button secondary" type="button" id="upsertCravingNode">Add / update craving</button>
+          </div>
+          <div class="control-row">
+            <button class="button primary" type="submit">Save cravings</button>
+            <button class="button ghost" type="button" id="resetCravingButton">Reset cravings</button>
+          </div>
+        </form>
+        <section class="panel dashboard" aria-live="polite">
+          <div class="metric-grid">
+            <article><span>Latest craving</span><strong id="latestCraving">0</strong><small>0-10 score</small></article>
+            <article><span>Average craving</span><strong id="averageCraving">0</strong><small>from entries</small></article>
+            <article><span>Craving entries</span><strong id="cravingEntryCount">0</strong><small>instances</small></article>
+            <article><span>Trend</span><strong id="cravingTrend">—</strong><small>latest vs first</small></article>
+          </div>
+          <div class="chart-card">
+            <div class="chart-title"><h3>Craving instances</h3><span>0 to 10 scale · click chart to choose date/time/count</span></div>
+            <canvas id="cravingChart" width="1200" height="500" aria-label="Craving score line chart; click to add a craving point" role="img"></canvas>
+          </div>
+        </section>
+      </div>
+    </section>
+
+    <section id="absorption" class="workspace absorption-workspace">
+      <div class="section-heading">
+        <p class="eyebrow">Absorption and half-life graphing</p>
+        <h2>Estimate what is in your system over time.</h2>
+        <p>Choose a substance, route-like timing inputs, amount used, and half-life. The graph is an educational relative model, not medical advice.</p>
+      </div>
+
+      <div class="tracker-layout absorption-layout">
+        <form class="panel controls" id="absorptionForm">
+          <label>
+            Substance preset
+            <select id="substanceSelect"></select>
+          </label>
+          <div class="two-column">
+            <label>
+              Custom substance name
+              <input id="customSubstance" type="text" placeholder="Optional" maxlength="48" />
+            </label>
+            <label>
+              Half-life (hours)
+              <input id="halfLife" type="number" min="0.05" step="0.05" value="2" />
+            </label>
+          </div>
+          <div class="two-column">
+            <label>
+              Usage amount
+              <input id="doseAmount" type="number" min="0" step="0.1" value="10" />
+            </label>
+            <label>
+              Usage unit
+              <input id="doseUnit" type="text" value="mg" maxlength="12" />
+            </label>
+          </div>
+          <div class="three-column">
+            <label>
+              Usage time
+              <input id="usageTime" type="datetime-local" />
+            </label>
+            <label>
+              Day / timezone
+              <select id="timeZoneMode">
+                <option value="local">My device timezone</option>
+                <option value="utc">UTC</option>
+              </select>
+            </label>
+            <label>
+              Inhalation / absorption window (min)
+              <input id="inhalationMinutes" type="number" min="0" step="0.1" value="5" />
+            </label>
+          </div>
+          <div class="two-column compact-options">
+            <label>
+              Hold time (sec)
+              <input id="holdSeconds" type="number" min="0" step="1" value="3" />
+            </label>
+            <label>
+              Absorption nodes (hour, amount)
+              <textarea id="absorptionNodes" rows="4" placeholder="Auto-filled when you add dated nodes; you can also type hour, amount"></textarea>
+            </label>
+          </div>
+          <div class="node-editor absorption-node-editor" aria-label="Absorption graph node editor">
+            <label>
+              Node date
+              <input id="absorptionNodeDate" type="date" />
+            </label>
+            <label>
+              Hour
+              <input id="absorptionNodeHour" type="number" min="0" max="23" step="1" placeholder="13" />
+            </label>
+            <label>
+              Minute
+              <input id="absorptionNodeMinute" type="number" min="0" max="59" step="1" placeholder="30" />
+            </label>
+            <label>
+              Amount
+              <input id="absorptionNodeY" type="number" min="0" step="0.01" placeholder="Amount" />
+            </label>
+            <button class="button secondary" type="button" id="upsertAbsorptionNode">Add / update node</button>
+          </div>
+          <p class="field-note">Absorption nodes are usage instances. Use the date, hour, and minute fields to place each node; Quikter converts it to hours from the main usage time for the graph.</p>
+          <div class="control-row">
+            <button class="button primary" type="submit">Save graph inputs</button>
+            <button class="button ghost" type="button" id="resetAbsorptionButton">Reset graph</button>
+          </div>
+        </form>
+
+        <section class="panel dashboard" aria-live="polite">
+          <div class="metric-grid absorption-metrics">
+            <article><span>Selected substance</span><strong id="substanceName">Nicotine</strong><small id="halfLifeLabel">2h half-life</small></article>
+            <article><span>Estimated peak</span><strong id="peakAmount">0 mg</strong><small id="peakEta">after absorption</small></article>
+            <article><span>After 24 hours</span><strong id="remainingAmount">0 mg</strong><small>relative remaining</small></article>
+            <article><span>Time to 5%</span><strong id="clearanceTime">0h</strong><small>about 4.32 half-lives</small></article>
+          </div>
+          <div class="chart-card">
+            <div class="chart-title"><h3>Absorption + elimination curve</h3><span id="absorptionWindowLabel">24 hour view · click chart to choose date/time/count</span></div>
+            <p class="time-context" id="usageTimeContext">Usage time shown in your device timezone.</p>
+            <canvas id="absorptionChart" width="1200" height="520" aria-label="Absorption and half-life line chart; click to add an absorption node" role="img"></canvas>
+          </div>
+        </section>
+      </div>
+    </section>
+
+    <section id="math" class="math-section">
+      <div class="section-heading narrow">
+        <p class="eyebrow">The math layer</p>
+        <h2>Signals you can inspect.</h2>
+      </div>
+      <div class="formula-grid">
+        <article><h3>Streak</h3><code>S(t) = max(0, today - quit_date)</code><p>Days since the last use date anchors money, craving, and absorption timelines.</p></article>
+        <article><h3>Elimination</h3><code>A(t) = A₀ × 0.5^(t / half_life)</code><p>Half-life presets and custom values power the remaining amount estimate.</p></article>
+        <article><h3>Absorption</h3><code>input(t) = dose × min(1, t / window)</code><p>Inhalation and hold settings shape how quickly the amount reaches peak.</p></article>
+      </div>
+    </section>
+
+    <section id="time" class="privacy-section time-section">
+      <div>
+        <p class="eyebrow">Day and timezone</p>
+        <h2>Graphs line up with your clock.</h2>
+      </div>
+      <ul class="privacy-list">
+        <li><strong>Device-local time.</strong> Quit-day streaks use the calendar day on this computer.</li>
+        <li><strong>Timezone-aware labels.</strong> Absorption usage time can be displayed as local time or UTC.</li>
+        <li><strong>Manual nodes.</strong> Custom graph points are plotted relative to day or hour inputs you type.</li>
+      </ul>
+    </section>
+
+    <section id="privacy" class="privacy-section">
+      <div>
+        <p class="eyebrow">Local-first by design</p>
+        <h2>Your quit data belongs on your machine.</h2>
+      </div>
+      <ul class="privacy-list">
+        <li><strong>No required account.</strong> Demo values are stored with browser localStorage on this computer.</li>
+        <li><strong>No remote database.</strong> Charts are generated in JavaScript in the browser.</li>
+        <li><strong>Resettable.</strong> Wipe buttons remove the local demo data whenever you want.</li>
+      </ul>
+    </section>
+  </main>
+
+  <footer>
+    <p>Quikter is a local-first concept for people who want clear quit math without surrendering their data.</p>
+  </footer>
+
+
+  <div class="graph-modal" id="graphPointModal" hidden>
+    <form class="graph-modal-card" id="graphPointForm" aria-label="Add graph point">
+      <div class="chart-title">
+        <h3 id="graphPointTitle">Add graph point</h3>
+        <button class="button ghost small-button" type="button" id="closeGraphPointModal">Close</button>
+      </div>
+      <p class="field-note" id="graphPointHint">Choose the date, time, and count for this graph point.</p>
+      <div class="graph-modal-grid">
+        <label>
+          Date
+          <input id="graphPointDate" type="date" required />
+        </label>
+        <label>
+          Hour
+          <input id="graphPointHour" type="number" min="0" max="23" step="1" required />
+        </label>
+        <label>
+          Minute
+          <input id="graphPointMinute" type="number" min="0" max="59" step="1" required />
+        </label>
+        <label>
+          <span id="graphPointCountLabel">Count</span>
+          <input id="graphPointCount" type="number" min="0" step="0.01" required />
+        </label>
+      </div>
+      <div class="control-row">
+        <button class="button primary" type="submit">Add point</button>
+        <button class="button ghost" type="button" id="cancelGraphPointModal">Cancel</button>
+      </div>
+    </form>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>
