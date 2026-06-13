@@ -17,7 +17,8 @@
         <span>Quikter</span>
       </a>
       <div class="nav-links">
-        <a href="#tracker">Quit tracker</a>
+        <a href="#tracker">Money tracker</a>
+        <a href="#cravings">Cravings</a>
         <a href="#absorption">Absorption graph</a>
         <a href="#time">Time</a>
         <a href="#privacy">Local data</a>
@@ -28,7 +29,7 @@
       <div class="hero-copy">
         <p class="eyebrow">Private math for quitting</p>
         <h1>Whiteboard-clean quit tracking with blue, local-first graphs.</h1>
-        <p class="lede">Quikter models streaks, savings, substance half-lives, and absorption curves directly in your browser. No account, no cloud database, and no server needed.</p>
+        <p class="lede">Quikter models streaks, real spending, craving instances, substance half-lives, and absorption curves directly in your browser. No account, no cloud database, and no server needed.</p>
         <div class="hero-actions">
           <a class="button primary" href="#tracker">Start modeling</a>
           <a class="button secondary" href="#absorption">Graph absorption</a>
@@ -43,8 +44,8 @@
           <span></span><span></span><span></span><span></span><span></span>
         </div>
         <div class="mini-stats">
-          <span><b id="heroSaved">$0</b> saved</span>
-          <span><b id="heroAvoided">0</b> avoided</span>
+          <span><b id="heroSaved">$0</b> spent</span>
+          <span><b id="heroAvoided">$0</b> avg/day</span>
         </div>
       </aside>
     </section>
@@ -55,7 +56,7 @@
       <article>
         <span class="icon">∑</span>
         <h2>Quit equations</h2>
-        <p>Track streak, cost, use count, milestones, and cravings from transparent formulas.</p>
+        <p>Track streak, real spending entries, craving instances, milestones, and averages from transparent formulas.</p>
       </article>
       <article>
         <span class="icon">λ</span>
@@ -71,9 +72,9 @@
 
     <section id="tracker" class="workspace">
       <div class="section-heading">
-        <p class="eyebrow">Quit tracker</p>
-        <h2>Model the habit you are leaving.</h2>
-        <p>Enter your quit date and usage economics. Quikter calculates a local progress graph and milestone summary.</p>
+        <p class="eyebrow">Money tracker</p>
+        <h2>Track what you actually spend.</h2>
+        <p>Enter quit date and real spending points. Quikter plots your entered spending and a separate green average-spend line without auto-creating savings.</p>
       </div>
 
       <div class="tracker-layout">
@@ -82,55 +83,28 @@
             Habit name
             <input id="habitName" type="text" value="Nicotine" maxlength="40" />
           </label>
-          <div class="two-column">
+          <label>
+            Quit date
+            <input id="quitDate" type="date" />
+          </label>
+          <label>
+            Money spent points (day, dollars)
+            <textarea id="savingsNodes" rows="5" placeholder="0, 0
+3, 18
+10, 29"></textarea>
+          </label>
+          <div class="node-editor" aria-label="Money spent graph node editor">
             <label>
-              Quit date
-              <input id="quitDate" type="date" />
-            </label>
-            <label>
-              Today's craving (0-10)
-              <input id="craving" type="range" min="0" max="10" value="4" />
-              <span class="range-value"><span id="cravingValue">4</span>/10</span>
-            </label>
-          </div>
-          <div class="two-column">
-            <label>
-              Average cost per day ($)
-              <input id="dailyCost" type="number" min="0" step="0.01" value="12" />
-            </label>
-            <label>
-              Uses avoided per day
-              <input id="dailyUses" type="number" min="0" step="1" value="20" />
-            </label>
-          </div>
-          <div class="two-column">
-            <label>
-              Savings graph input mode
-              <select id="savingsGraphMode">
-                <option value="model">Model curve</option>
-                <option value="nodes">Custom nodes only</option>
-                <option value="combined">Model + custom nodes</option>
-              </select>
-            </label>
-            <label>
-              Add savings nodes (day, dollars)
-              <textarea id="savingsNodes" rows="4" placeholder="7, 84
-14, 168
-30, 360"></textarea>
-            </label>
-          </div>
-          <div class="node-editor" aria-label="Savings graph node editor">
-            <label>
-              Node day
+              Spent day
               <input id="savingsNodeX" type="number" min="0" step="0.1" placeholder="Day" />
             </label>
             <label>
-              Node dollars
+              Dollars spent
               <input id="savingsNodeY" type="number" min="0" step="0.01" placeholder="Amount" />
             </label>
-            <button class="button secondary" type="button" id="upsertSavingsNode">Add / update node</button>
+            <button class="button secondary" type="button" id="upsertSavingsNode">Add / update spent</button>
           </div>
-          <p class="field-note">Enter one node per line as <strong>day, amount</strong>, or use the node box above to add a new point or update an existing day. Nodes are stored locally with the tracker.</p>
+          <p class="field-note">Add real spend entries only. The blue line is entered spending; the green line is the average dollars per day from those entries.</p>
           <div class="control-row">
             <button class="button primary" type="submit">Save locally</button>
             <button class="button ghost" type="button" id="resetButton">Wipe demo data</button>
@@ -140,13 +114,58 @@
         <section class="panel dashboard" aria-live="polite">
           <div class="metric-grid">
             <article><span>Current streak</span><strong id="streakDays">0</strong><small>days quit</small></article>
-            <article><span>Estimated savings</span><strong id="moneySaved">$0</strong><small>kept locally</small></article>
-            <article><span>Uses avoided</span><strong id="usesAvoided">0</strong><small>modeled total</small></article>
+            <article><span>Total spent</span><strong id="moneySaved">$0</strong><small>from entries</small></article>
+            <article><span>Average spent</span><strong id="usesAvoided">$0</strong><small>per day</small></article>
             <article><span>Next milestone</span><strong id="nextMilestone">7d</strong><small id="milestoneEta">soon</small></article>
           </div>
           <div class="chart-card">
-            <div class="chart-title"><h3>Savings projection</h3><span>90 day curve</span></div>
-            <canvas id="savingsChart" width="900" height="340" aria-label="Projected savings line chart" role="img"></canvas>
+            <div class="chart-title"><h3>Money spent tracker</h3><span>blue actual · green average</span></div>
+            <canvas id="savingsChart" width="900" height="340" aria-label="Money spent line chart" role="img"></canvas>
+          </div>
+        </section>
+      </div>
+    </section>
+
+    <section id="cravings" class="workspace">
+      <div class="section-heading">
+        <p class="eyebrow">Craving graph</p>
+        <h2>Track craving instances separately.</h2>
+        <p>Add day-by-day craving scores from 0 to 10. These are separate from money and absorption.</p>
+      </div>
+      <div class="tracker-layout">
+        <form class="panel controls" id="cravingForm">
+          <label>
+            Craving points (day, score 0-10)
+            <textarea id="cravingNodes" rows="5" placeholder="0, 8
+1, 6
+7, 3"></textarea>
+          </label>
+          <div class="node-editor" aria-label="Craving graph node editor">
+            <label>
+              Craving day
+              <input id="cravingNodeX" type="number" min="0" step="0.1" placeholder="Day" />
+            </label>
+            <label>
+              Score
+              <input id="cravingNodeY" type="number" min="0" max="10" step="0.1" placeholder="0-10" />
+            </label>
+            <button class="button secondary" type="button" id="upsertCravingNode">Add / update craving</button>
+          </div>
+          <div class="control-row">
+            <button class="button primary" type="submit">Save cravings</button>
+            <button class="button ghost" type="button" id="resetCravingButton">Reset cravings</button>
+          </div>
+        </form>
+        <section class="panel dashboard" aria-live="polite">
+          <div class="metric-grid">
+            <article><span>Latest craving</span><strong id="latestCraving">0</strong><small>0-10 score</small></article>
+            <article><span>Average craving</span><strong id="averageCraving">0</strong><small>from entries</small></article>
+            <article><span>Craving entries</span><strong id="cravingEntryCount">0</strong><small>instances</small></article>
+            <article><span>Trend</span><strong id="cravingTrend">—</strong><small>latest vs first</small></article>
+          </div>
+          <div class="chart-card">
+            <div class="chart-title"><h3>Craving instances</h3><span>0 to 10 scale</span></div>
+            <canvas id="cravingChart" width="900" height="340" aria-label="Craving score line chart" role="img"></canvas>
           </div>
         </section>
       </div>
@@ -222,6 +241,25 @@
 6, 2.5"></textarea>
             </label>
           </div>
+          <div class="two-column">
+            <label>
+              Add absorption instances (hour, amount)
+              <textarea id="absorptionInstances" rows="4" placeholder="2, 10
+8, 5"></textarea>
+            </label>
+          </div>
+          <div class="node-editor" aria-label="Absorption instance editor">
+            <label>
+              Instance hour
+              <input id="absorptionInstanceX" type="number" min="0" step="0.05" placeholder="Hour" />
+            </label>
+            <label>
+              Instance amount
+              <input id="absorptionInstanceY" type="number" min="0" step="0.01" placeholder="Amount" />
+            </label>
+            <button class="button secondary" type="button" id="upsertAbsorptionInstance">Add / update instance</button>
+          </div>
+          <p class="field-note">Instances are extra uses/doses added to the half-life model at their hour offset, so the absorption curve can rise again after new usage.</p>
           <div class="node-editor" aria-label="Absorption graph node editor">
             <label>
               Node hour
@@ -233,7 +271,7 @@
             </label>
             <button class="button secondary" type="button" id="upsertAbsorptionNode">Add / update node</button>
           </div>
-          <p class="field-note">Enter one node per line as <strong>hour since usage, amount</strong>, or use the node box above to add a new point or update an existing hour. The selected day and timezone control the usage-time label.</p>
+          <p class="field-note">Enter one node per line as <strong>hour since usage, amount</strong>, use the instance box to add modeled usage events, or use the node box above to add/update observed graph points. The selected day and timezone control the usage-time label.</p>
           <div class="control-row">
             <button class="button primary" type="submit">Save graph inputs</button>
             <button class="button ghost" type="button" id="resetAbsorptionButton">Reset graph</button>
@@ -262,7 +300,7 @@
         <h2>Signals you can inspect.</h2>
       </div>
       <div class="formula-grid">
-        <article><h3>Streak</h3><code>S(t) = max(0, today - quit_date)</code><p>Days since the last use date drives savings and avoided-use totals.</p></article>
+        <article><h3>Streak</h3><code>S(t) = max(0, today - quit_date)</code><p>Days since the last use date anchors money, craving, and absorption timelines.</p></article>
         <article><h3>Elimination</h3><code>A(t) = A₀ × 0.5^(t / half_life)</code><p>Half-life presets and custom values power the remaining amount estimate.</p></article>
         <article><h3>Absorption</h3><code>input(t) = dose × min(1, t / window)</code><p>Inhalation and hold settings shape how quickly the amount reaches peak.</p></article>
       </div>

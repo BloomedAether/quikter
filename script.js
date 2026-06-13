@@ -1,5 +1,6 @@
 const quitStorageKey = 'quikter-local-quit-model';
 const absorptionStorageKey = 'quikter-local-absorption-model';
+const cravingStorageKey = 'quikter-local-craving-model';
 const dayMs = 24 * 60 * 60 * 1000;
 const milestoneDays = [1, 3, 7, 14, 30, 60, 90, 180, 365, 730, 1000];
 
@@ -25,10 +26,12 @@ const elements = {
   quitForm: document.querySelector('#quitForm'),
   habitName: document.querySelector('#habitName'),
   quitDate: document.querySelector('#quitDate'),
-  dailyCost: document.querySelector('#dailyCost'),
-  dailyUses: document.querySelector('#dailyUses'),
-  craving: document.querySelector('#craving'),
-  cravingValue: document.querySelector('#cravingValue'),
+  cravingForm: document.querySelector('#cravingForm'),
+  cravingNodes: document.querySelector('#cravingNodes'),
+  cravingNodeX: document.querySelector('#cravingNodeX'),
+  cravingNodeY: document.querySelector('#cravingNodeY'),
+  upsertCravingNode: document.querySelector('#upsertCravingNode'),
+  resetCravingButton: document.querySelector('#resetCravingButton'),
   resetButton: document.querySelector('#resetButton'),
   streakDays: document.querySelector('#streakDays'),
   moneySaved: document.querySelector('#moneySaved'),
@@ -38,12 +41,16 @@ const elements = {
   heroStreak: document.querySelector('#heroStreak'),
   heroSaved: document.querySelector('#heroSaved'),
   heroAvoided: document.querySelector('#heroAvoided'),
-  savingsGraphMode: document.querySelector('#savingsGraphMode'),
   savingsNodes: document.querySelector('#savingsNodes'),
   savingsNodeX: document.querySelector('#savingsNodeX'),
   savingsNodeY: document.querySelector('#savingsNodeY'),
   upsertSavingsNode: document.querySelector('#upsertSavingsNode'),
   savingsChart: document.querySelector('#savingsChart'),
+  cravingChart: document.querySelector('#cravingChart'),
+  latestCraving: document.querySelector('#latestCraving'),
+  averageCraving: document.querySelector('#averageCraving'),
+  cravingEntryCount: document.querySelector('#cravingEntryCount'),
+  cravingTrend: document.querySelector('#cravingTrend'),
   absorptionForm: document.querySelector('#absorptionForm'),
   substanceSelect: document.querySelector('#substanceSelect'),
   customSubstance: document.querySelector('#customSubstance'),
@@ -56,6 +63,10 @@ const elements = {
   holdSeconds: document.querySelector('#holdSeconds'),
   absorptionGraphMode: document.querySelector('#absorptionGraphMode'),
   absorptionNodes: document.querySelector('#absorptionNodes'),
+  absorptionInstances: document.querySelector('#absorptionInstances'),
+  absorptionInstanceX: document.querySelector('#absorptionInstanceX'),
+  absorptionInstanceY: document.querySelector('#absorptionInstanceY'),
+  upsertAbsorptionInstance: document.querySelector('#upsertAbsorptionInstance'),
   absorptionNodeX: document.querySelector('#absorptionNodeX'),
   absorptionNodeY: document.querySelector('#absorptionNodeY'),
   upsertAbsorptionNode: document.querySelector('#upsertAbsorptionNode'),
@@ -74,6 +85,7 @@ const elements = {
 const currency = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 });
 const wholeNumber = new Intl.NumberFormat('en-US', { maximumFractionDigits: 0 });
 const decimalNumber = new Intl.NumberFormat('en-US', { maximumFractionDigits: 2 });
+let currentSubstanceId = 'nicotine';
 
 function todayISO() {
   return new Date().toISOString().slice(0, 10);
@@ -97,10 +109,6 @@ function getQuitModelFromForm() {
   return {
     habitName: elements.habitName.value.trim() || 'Habit',
     quitDate: elements.quitDate.value || todayISO(),
-    dailyCost: Math.max(0, Number(elements.dailyCost.value) || 0),
-    dailyUses: Math.max(0, Number(elements.dailyUses.value) || 0),
-    craving: Math.max(0, Number(elements.craving.value) || 0),
-    savingsGraphMode: elements.savingsGraphMode.value,
     savingsNodes: elements.savingsNodes.value,
     updatedAt: new Date().toISOString(),
   };
@@ -110,10 +118,6 @@ function loadQuitModel() {
   return safeStoredObject(quitStorageKey, {
     habitName: 'Nicotine',
     quitDate: todayISO(),
-    dailyCost: 12,
-    dailyUses: 20,
-    craving: 4,
-    savingsGraphMode: 'model',
     savingsNodes: '',
   });
 }
@@ -121,11 +125,6 @@ function loadQuitModel() {
 function hydrateQuitForm(model) {
   elements.habitName.value = model.habitName;
   elements.quitDate.value = model.quitDate;
-  elements.dailyCost.value = model.dailyCost;
-  elements.dailyUses.value = model.dailyUses;
-  elements.craving.value = model.craving;
-  elements.cravingValue.textContent = model.craving;
-  elements.savingsGraphMode.value = model.savingsGraphMode || 'model';
   elements.savingsNodes.value = model.savingsNodes || '';
 }
 
@@ -134,42 +133,90 @@ function calculateQuitStats(model) {
   const now = new Date();
   const todayTime = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
   const streak = Math.max(0, Math.floor((todayTime - quitTime) / dayMs));
-  const savings = streak * model.dailyCost;
-  const avoided = streak * model.dailyUses;
+  const spentPoints = parseGraphNodes(model.savingsNodes);
+  const totalSpent = spentPoints.length ? spentPoints[spentPoints.length - 1].y : 0;
+  const lastDay = spentPoints.length ? Math.max(1, spentPoints[spentPoints.length - 1].x) : Math.max(1, streak);
+  const averageSpent = totalSpent / lastDay;
   const next = milestoneDays.find((day) => day > streak) || streak + 365;
   const remaining = Math.max(0, next - streak);
 
-  return { streak, savings, avoided, next, remaining };
+  return { streak, totalSpent, averageSpent, next, remaining };
 }
 
 function updateQuitDashboard(model) {
   const stats = calculateQuitStats(model);
 
   elements.streakDays.textContent = wholeNumber.format(stats.streak);
-  elements.moneySaved.textContent = currency.format(stats.savings);
-  elements.usesAvoided.textContent = wholeNumber.format(stats.avoided);
+  elements.moneySaved.textContent = currency.format(stats.totalSpent);
+  elements.usesAvoided.textContent = currency.format(stats.averageSpent);
   elements.nextMilestone.textContent = `${stats.next}d`;
   elements.milestoneEta.textContent = stats.remaining === 0 ? 'today' : `${stats.remaining} days away`;
   elements.heroStreak.textContent = `${wholeNumber.format(stats.streak)} days`;
-  elements.heroSaved.textContent = currency.format(stats.savings);
-  elements.heroAvoided.textContent = wholeNumber.format(stats.avoided);
+  elements.heroSaved.textContent = currency.format(stats.totalSpent);
+  elements.heroAvoided.textContent = currency.format(stats.averageSpent);
 
   drawSavingsChart(model, stats.streak);
 }
 
 function drawSavingsChart(model, streak) {
-  const modelPoints = Array.from({ length: 91 }, (_, day) => ({ x: day, y: day * model.dailyCost }));
-  const customPoints = parseGraphNodes(model.savingsNodes);
-  const points = pointsForMode(model.savingsGraphMode, modelPoints, customPoints);
+  const actualPoints = parseGraphNodes(model.savingsNodes);
+  const lastDay = Math.max(1, 90, streak, ...actualPoints.map((point) => point.x));
+  const totalSpent = actualPoints.length ? actualPoints[actualPoints.length - 1].y : 0;
+  const lastSpendDay = actualPoints.length ? Math.max(1, actualPoints[actualPoints.length - 1].x) : 1;
+  const averagePerDay = totalSpent / lastSpendDay;
+  const averagePoints = [
+    { x: 0, y: 0 },
+    { x: lastDay, y: lastDay * averagePerDay },
+  ];
+  const points = actualPoints.length ? actualPoints : [{ x: 0, y: 0 }];
+
   drawLineChart(elements.savingsChart, points, {
     lineColor: '#1368ff',
     fillColor: 'rgba(19, 104, 255, 0.08)',
     xLabelStart: '0d',
-    xLabelEnd: '90d',
+    xLabelEnd: `${wholeNumber.format(lastDay)}d`,
     yLabelStart: '$0',
-    yLabelEnd: currency.format(Math.max(1, 90 * model.dailyCost)),
-    markerX: Math.min(Math.max(...points.map((point) => point.x), 90), streak),
-    customPoints,
+    yLabelEnd: currency.format(Math.max(1, totalSpent, lastDay * averagePerDay)),
+    markerX: actualPoints.length ? actualPoints[actualPoints.length - 1].x : 0,
+    customPoints: actualPoints,
+    secondaryPoints: averagePoints,
+    secondaryColor: '#15a46b',
+  });
+}
+
+function loadCravingModel() {
+  return safeStoredObject(cravingStorageKey, { cravingNodes: '' });
+}
+
+function getCravingModelFromForm() {
+  return { cravingNodes: elements.cravingNodes.value, updatedAt: new Date().toISOString() };
+}
+
+function hydrateCravingForm(model) {
+  elements.cravingNodes.value = model.cravingNodes || '';
+}
+
+function updateCravingDashboard(model) {
+  const points = parseGraphNodes(model.cravingNodes).map((point) => ({ x: point.x, y: Math.min(10, point.y) }));
+  const latest = points.length ? points[points.length - 1].y : 0;
+  const average = points.length ? points.reduce((sum, point) => sum + point.y, 0) / points.length : 0;
+  const first = points.length ? points[0].y : latest;
+
+  elements.latestCraving.textContent = decimalNumber.format(latest);
+  elements.averageCraving.textContent = decimalNumber.format(average);
+  elements.cravingEntryCount.textContent = wholeNumber.format(points.length);
+  elements.cravingTrend.textContent = points.length < 2 ? '—' : (latest <= first ? 'Down' : 'Up');
+
+  drawLineChart(elements.cravingChart, points.length ? points : [{ x: 0, y: 0 }], {
+    lineColor: '#7c3aed',
+    fillColor: 'rgba(124, 58, 237, 0.1)',
+    xLabelStart: '0d',
+    xLabelEnd: `${wholeNumber.format(Math.max(1, ...points.map((point) => point.x)))}d`,
+    yLabelStart: '0',
+    yLabelEnd: '10',
+    markerX: points.length ? points[points.length - 1].x : 0,
+    customPoints: points,
+    fixedYMax: 10,
   });
 }
 
@@ -183,18 +230,42 @@ function selectedPreset() {
   return substancePresets.find((preset) => preset.id === elements.substanceSelect.value) || substancePresets[0];
 }
 
-function loadAbsorptionModel() {
-  return safeStoredObject(absorptionStorageKey, {
-    substanceId: 'nicotine',
+function zeroAbsorptionModel(substanceId) {
+  const preset = substancePresets.find((substance) => substance.id === substanceId) || substancePresets[0];
+  return {
+    substanceId: preset.id,
     customSubstance: '',
-    halfLifeHours: 2,
-    doseAmount: 10,
-    doseUnit: 'mg',
+    halfLifeHours: preset.halfLifeHours,
+    doseAmount: 0,
+    doseUnit: preset.unit,
     usageTime: nowLocalDateTime(),
     timeZoneMode: 'local',
-    inhalationMinutes: 5,
-    holdSeconds: 3,
-  });
+    inhalationMinutes: 0,
+    holdSeconds: 0,
+    absorptionGraphMode: 'model',
+    absorptionNodes: '',
+    absorptionInstances: '',
+  };
+}
+
+function loadAbsorptionStore() {
+  try {
+    const stored = JSON.parse(localStorage.getItem(absorptionStorageKey));
+    return stored?.substances ? stored : { substances: {} };
+  } catch {
+    return { substances: {} };
+  }
+}
+
+function saveAbsorptionModel(model) {
+  const store = loadAbsorptionStore();
+  store.substances = { ...store.substances, [model.substanceId]: model };
+  localStorage.setItem(absorptionStorageKey, JSON.stringify(store));
+}
+
+function loadAbsorptionModel(substanceId = currentSubstanceId) {
+  const store = loadAbsorptionStore();
+  return store.substances?.[substanceId] || zeroAbsorptionModel(substanceId);
 }
 
 function getAbsorptionModelFromForm() {
@@ -211,6 +282,7 @@ function getAbsorptionModelFromForm() {
     holdSeconds: Math.max(0, Number(elements.holdSeconds.value) || 0),
     absorptionGraphMode: elements.absorptionGraphMode.value,
     absorptionNodes: elements.absorptionNodes.value,
+    absorptionInstances: elements.absorptionInstances.value,
     updatedAt: new Date().toISOString(),
   };
 }
@@ -227,6 +299,7 @@ function hydrateAbsorptionForm(model) {
   elements.holdSeconds.value = model.holdSeconds;
   elements.absorptionGraphMode.value = model.absorptionGraphMode || 'model';
   elements.absorptionNodes.value = model.absorptionNodes || '';
+  elements.absorptionInstances.value = model.absorptionInstances || '';
 }
 
 function applyPresetToAbsorptionForm() {
@@ -244,16 +317,29 @@ function substanceDisplayName(model) {
   return model.substanceId === 'custom' && model.customSubstance ? model.customSubstance : preset.name;
 }
 
-function amountAtHour(hour, model) {
+function amountAtHourForDose(hour, model, doseAmount) {
+  if (hour < 0) return 0;
   const absorptionWindowHours = Math.max(0.01, model.inhalationMinutes / 60 + model.holdSeconds / 3600);
   const absorbedFraction = Math.min(1, Math.max(0, hour / absorptionWindowHours));
-  const absorbedAmount = model.doseAmount * absorbedFraction;
+  const absorbedAmount = doseAmount * absorbedFraction;
   const eliminationHours = Math.max(0, hour - absorptionWindowHours / 2);
   return absorbedAmount * Math.pow(0.5, eliminationHours / model.halfLifeHours);
 }
 
+function absorptionInstancePoints(model) {
+  return parseGraphNodes(model.absorptionInstances);
+}
+
+function amountAtHour(hour, model) {
+  const baseAmount = amountAtHourForDose(hour, model, model.doseAmount);
+  return absorptionInstancePoints(model).reduce((total, instance) => (
+    total + amountAtHourForDose(hour - instance.x, model, instance.y)
+  ), baseAmount);
+}
+
 function absorptionSeries(model) {
-  const visibleHours = Math.max(24, Math.ceil(model.halfLifeHours * 6));
+  const lastInstanceHour = Math.max(0, ...absorptionInstancePoints(model).map((point) => point.x));
+  const visibleHours = Math.max(24, Math.ceil(lastInstanceHour + model.halfLifeHours * 6));
   const pointCount = 145;
   return Array.from({ length: pointCount }, (_, index) => {
     const hour = (visibleHours / (pointCount - 1)) * index;
@@ -268,7 +354,8 @@ function updateAbsorptionDashboard(model) {
   const peak = series.reduce((highest, point) => (point.y > highest.y ? point : highest), series[0]);
   const remaining24 = amountAtHour(24, model);
   const clearanceHours = model.halfLifeHours * Math.log2(20);
-  const visibleHours = Math.max(24, Math.ceil(model.halfLifeHours * 6));
+  const lastInstanceHour = Math.max(0, ...absorptionInstancePoints(model).map((point) => point.x));
+  const visibleHours = Math.max(24, Math.ceil(lastInstanceHour + model.halfLifeHours * 6));
   const unit = model.doseUnit;
 
   elements.substanceName.textContent = substanceDisplayName(model);
@@ -357,8 +444,10 @@ function drawLineChart(canvas, points, config) {
   const width = canvas.width;
   const height = canvas.height;
   const padding = 48;
-  const xMax = Math.max(...points.map((point) => point.x), 1);
-  const yMax = Math.max(...points.map((point) => point.y), 1);
+  const allXPoints = [...points, ...(config.secondaryPoints || [])];
+  const xMax = Math.max(...allXPoints.map((point) => point.x), 1);
+  const allYPoints = [...points, ...(config.secondaryPoints || [])];
+  const yMax = config.fixedYMax || Math.max(...allYPoints.map((point) => point.y), 1);
 
   ctx.clearRect(0, 0, width, height);
   ctx.fillStyle = '#ffffff';
@@ -398,6 +487,19 @@ function drawLineChart(canvas, points, config) {
   ctx.lineWidth = 4;
   ctx.stroke();
 
+  if (config.secondaryPoints?.length) {
+    ctx.beginPath();
+    config.secondaryPoints.forEach((point, index) => {
+      const x = padding + (point.x / xMax) * (width - padding * 2);
+      const y = height - padding - (point.y / yMax) * (height - padding * 2);
+      if (index === 0) ctx.moveTo(x, y);
+      else ctx.lineTo(x, y);
+    });
+    ctx.strokeStyle = config.secondaryColor || '#15a46b';
+    ctx.lineWidth = 4;
+    ctx.stroke();
+  }
+
   if (config.customPoints?.length) {
     ctx.fillStyle = '#0c43b8';
     config.customPoints.forEach((point) => {
@@ -432,7 +534,12 @@ function start() {
   hydrateQuitForm(quitModel);
   updateQuitDashboard(quitModel);
 
-  const absorptionModel = loadAbsorptionModel();
+  const cravingModel = loadCravingModel();
+  hydrateCravingForm(cravingModel);
+  updateCravingDashboard(cravingModel);
+
+  currentSubstanceId = elements.substanceSelect.value || currentSubstanceId;
+  const absorptionModel = loadAbsorptionModel(currentSubstanceId);
   hydrateAbsorptionForm(absorptionModel);
   updateAbsorptionDashboard(absorptionModel);
 
@@ -445,7 +552,6 @@ function start() {
 
   elements.quitForm.addEventListener('input', () => {
     const nextModel = getQuitModelFromForm();
-    elements.cravingValue.textContent = nextModel.craving;
     updateQuitDashboard(nextModel);
   });
 
@@ -460,20 +566,51 @@ function start() {
     updateQuitDashboard(resetModel);
   });
 
+  elements.cravingForm.addEventListener('submit', (event) => {
+    event.preventDefault();
+    const nextModel = getCravingModelFromForm();
+    localStorage.setItem(cravingStorageKey, JSON.stringify(nextModel));
+    updateCravingDashboard(nextModel);
+  });
+
+  elements.cravingForm.addEventListener('input', () => {
+    updateCravingDashboard(getCravingModelFromForm());
+  });
+
+  elements.upsertCravingNode.addEventListener('click', () => {
+    upsertGraphNode(elements.cravingNodes, elements.cravingNodeX, elements.cravingNodeY);
+  });
+
+  elements.resetCravingButton.addEventListener('click', () => {
+    localStorage.removeItem(cravingStorageKey);
+    const resetModel = loadCravingModel();
+    hydrateCravingForm(resetModel);
+    updateCravingDashboard(resetModel);
+  });
+
   elements.substanceSelect.addEventListener('change', () => {
-    applyPresetToAbsorptionForm();
-    updateAbsorptionDashboard(getAbsorptionModelFromForm());
+    saveAbsorptionModel(getAbsorptionModelFromForm());
+    currentSubstanceId = elements.substanceSelect.value;
+    const nextModel = loadAbsorptionModel(currentSubstanceId);
+    hydrateAbsorptionForm(nextModel);
+    updateAbsorptionDashboard(nextModel);
   });
 
   elements.absorptionForm.addEventListener('submit', (event) => {
     event.preventDefault();
     const nextModel = getAbsorptionModelFromForm();
-    localStorage.setItem(absorptionStorageKey, JSON.stringify(nextModel));
+    saveAbsorptionModel(nextModel);
     updateAbsorptionDashboard(nextModel);
   });
 
   elements.absorptionForm.addEventListener('input', () => {
-    updateAbsorptionDashboard(getAbsorptionModelFromForm());
+    const nextModel = getAbsorptionModelFromForm();
+    saveAbsorptionModel(nextModel);
+    updateAbsorptionDashboard(nextModel);
+  });
+
+  elements.upsertAbsorptionInstance.addEventListener('click', () => {
+    upsertGraphNode(elements.absorptionInstances, elements.absorptionInstanceX, elements.absorptionInstanceY);
   });
 
   elements.upsertAbsorptionNode.addEventListener('click', () => {
@@ -481,8 +618,10 @@ function start() {
   });
 
   elements.resetAbsorptionButton.addEventListener('click', () => {
-    localStorage.removeItem(absorptionStorageKey);
-    const resetModel = loadAbsorptionModel();
+    const store = loadAbsorptionStore();
+    delete store.substances[currentSubstanceId];
+    localStorage.setItem(absorptionStorageKey, JSON.stringify(store));
+    const resetModel = loadAbsorptionModel(currentSubstanceId);
     hydrateAbsorptionForm(resetModel);
     updateAbsorptionDashboard(resetModel);
   });
