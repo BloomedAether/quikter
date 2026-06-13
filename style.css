@@ -204,3 +204,115 @@ textarea:focus { outline: 3px solid rgba(19,104,255,0.15); border-color: var(--b
 @media (max-width: 520px) {
   .absorption-node-editor { grid-template-columns: 1fr; }
 }
+/* Seamless form/layout fixes */
+.workspace { overflow: hidden; }
+.tracker-layout {
+  grid-template-columns: minmax(280px, 360px) minmax(0, 1fr);
+}
+.panel,
+.controls,
+.controls label,
+.chart-card,
+.dashboard { min-width: 0; }
+.controls { overflow: hidden; }
+input,
+select,
+textarea {
+  max-width: 100%;
+  min-width: 0;
+}
+textarea::placeholder,
+input::placeholder { color: rgba(15, 35, 71, 0.48); }
+.node-editor {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  overflow: hidden;
+}
+.node-editor .button {
+  grid-column: 1 / -1;
+  width: 100%;
+  min-width: 0;
+}
+.chart-card canvas {
+  display: block;
+  min-height: 260px;
+}
+.workspace .section-heading h2 {
+  font-size: clamp(2.1rem, 5vw, 5rem);
+  line-height: 0.96;
+}
+@media (max-width: 1180px) {
+  .tracker-layout { grid-template-columns: 1fr; }
+}
+@media (max-width: 520px) {
+  .node-editor { grid-template-columns: 1fr; }
+}
+/* Larger, click-to-add graph surfaces */
+.chart-card {
+  padding: clamp(20px, 2.4vw, 30px);
+}
+.chart-card canvas {
+  min-height: clamp(340px, 42vw, 520px);
+  cursor: crosshair;
+}
+.dashboard .chart-card { margin-top: 8px; }
+.tracker-layout {
+  grid-template-columns: minmax(280px, 340px) minmax(0, 1fr);
+  gap: clamp(18px, 2.4vw, 32px);
+}
+@media (max-width: 1180px) {
+  .chart-card canvas { min-height: 360px; }
+}
+/* Click-to-add graph point modal */
+.graph-modal[hidden] { display: none; }
+.graph-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: rgba(15, 35, 71, 0.28);
+  backdrop-filter: blur(10px);
+}
+.graph-modal-card {
+  width: min(680px, 100%);
+  display: grid;
+  gap: 18px;
+  padding: clamp(22px, 4vw, 32px);
+  border: 1px solid var(--line);
+  border-radius: 28px;
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: var(--shadow);
+}
+.graph-modal-grid {
+  display: grid;
+  grid-template-columns: 1.2fr 0.7fr 0.7fr 1fr;
+  gap: 12px;
+}
+.small-button { padding: 9px 14px; font-size: 0.9rem; }
+@media (max-width: 720px) {
+  .graph-modal-grid { grid-template-columns: 1fr 1fr; }
+}
+@media (max-width: 480px) {
+  .graph-modal-grid { grid-template-columns: 1fr; }
+}
+/* Seamless click-first graph input guidance */
+.chart-helper {
+  margin: 4px 0 14px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: linear-gradient(180deg, var(--surface-soft), #fff);
+  color: var(--muted);
+  font-weight: 700;
+  line-height: 1.45;
+}
+.graph-modal-card input {
+  min-height: 48px;
+}
+.graph-modal-card .field-note {
+  margin: -6px 0 0;
+  padding: 10px 12px;
+  border-radius: 14px;
+  background: var(--surface-soft);
+}
