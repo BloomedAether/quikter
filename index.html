@@ -221,57 +221,38 @@
               <input id="inhalationMinutes" type="number" min="0" step="0.1" value="5" />
             </label>
           </div>
-          <div class="three-column">
+          <div class="two-column compact-options">
             <label>
               Hold time (sec)
               <input id="holdSeconds" type="number" min="0" step="1" value="3" />
             </label>
             <label>
-              Absorption graph input mode
-              <select id="absorptionGraphMode">
-                <option value="model">Half-life model</option>
-                <option value="nodes">Custom nodes only</option>
-                <option value="combined">Model + custom nodes</option>
-              </select>
-            </label>
-            <label>
-              Add absorption nodes (hour, amount)
-              <textarea id="absorptionNodes" rows="4" placeholder="0.25, 4
-1, 9
-6, 2.5"></textarea>
+              Absorption nodes (hour, amount)
+              <textarea id="absorptionNodes" rows="4" placeholder="0, 10
+2.5, 8
+8.25, 5"></textarea>
             </label>
           </div>
-          <div class="two-column">
+          <div class="node-editor absorption-node-editor" aria-label="Absorption graph node editor">
             <label>
-              Add absorption instances (hour, amount)
-              <textarea id="absorptionInstances" rows="4" placeholder="2, 10
-8, 5"></textarea>
-            </label>
-          </div>
-          <div class="node-editor" aria-label="Absorption instance editor">
-            <label>
-              Instance hour
-              <input id="absorptionInstanceX" type="number" min="0" step="0.05" placeholder="Hour" />
+              Node date
+              <input id="absorptionNodeDate" type="date" />
             </label>
             <label>
-              Instance amount
-              <input id="absorptionInstanceY" type="number" min="0" step="0.01" placeholder="Amount" />
-            </label>
-            <button class="button secondary" type="button" id="upsertAbsorptionInstance">Add / update instance</button>
-          </div>
-          <p class="field-note">Instances are extra uses/doses added to the half-life model at their hour offset, so the absorption curve can rise again after new usage.</p>
-          <div class="node-editor" aria-label="Absorption graph node editor">
-            <label>
-              Node hour
-              <input id="absorptionNodeX" type="number" min="0" step="0.05" placeholder="Hour" />
+              Hour
+              <input id="absorptionNodeHour" type="number" min="0" max="23" step="1" placeholder="13" />
             </label>
             <label>
-              Node amount
+              Minute
+              <input id="absorptionNodeMinute" type="number" min="0" max="59" step="1" placeholder="30" />
+            </label>
+            <label>
+              Amount
               <input id="absorptionNodeY" type="number" min="0" step="0.01" placeholder="Amount" />
             </label>
             <button class="button secondary" type="button" id="upsertAbsorptionNode">Add / update node</button>
           </div>
-          <p class="field-note">Enter one node per line as <strong>hour since usage, amount</strong>, use the instance box to add modeled usage events, or use the node box above to add/update observed graph points. The selected day and timezone control the usage-time label.</p>
+          <p class="field-note">Absorption nodes are usage instances. Use the date, hour, and minute fields to place each node; Quikter converts it to hours from the main usage time for the graph.</p>
           <div class="control-row">
             <button class="button primary" type="submit">Save graph inputs</button>
             <button class="button ghost" type="button" id="resetAbsorptionButton">Reset graph</button>

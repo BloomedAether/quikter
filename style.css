@@ -173,3 +173,34 @@ textarea:focus { outline: 3px solid rgba(19,104,255,0.15); border-color: var(--b
 @media (max-width: 1320px) {
   .absorption-layout .metric-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
+/* Compact absorption controls: nodes are the single source of graph instances. */
+.absorption-layout {
+  grid-template-columns: minmax(320px, 440px) minmax(0, 1fr);
+}
+.absorption-layout .panel { padding: 20px; }
+.absorption-layout .controls { gap: 12px; }
+.absorption-layout label { gap: 6px; font-size: 0.94rem; }
+.absorption-layout input,
+.absorption-layout select,
+.absorption-layout textarea {
+  border-radius: 12px;
+  padding: 10px 11px;
+  font-size: 0.95rem;
+}
+.absorption-layout textarea { min-height: 86px; }
+.absorption-layout .two-column,
+.absorption-layout .three-column,
+.absorption-layout .compact-options {
+  gap: 10px;
+}
+.absorption-node-editor {
+  grid-template-columns: minmax(120px, 1.2fr) minmax(64px, 0.7fr) minmax(74px, 0.7fr) minmax(92px, 0.9fr);
+}
+.absorption-node-editor .button { grid-column: 1 / -1; }
+@media (max-width: 760px) {
+  .absorption-node-editor { grid-template-columns: 1fr 1fr; }
+  .absorption-node-editor .button { grid-column: 1 / -1; }
+}
+@media (max-width: 520px) {
+  .absorption-node-editor { grid-template-columns: 1fr; }
+}

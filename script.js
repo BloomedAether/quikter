@@ -61,13 +61,10 @@ const elements = {
   timeZoneMode: document.querySelector('#timeZoneMode'),
   inhalationMinutes: document.querySelector('#inhalationMinutes'),
   holdSeconds: document.querySelector('#holdSeconds'),
-  absorptionGraphMode: document.querySelector('#absorptionGraphMode'),
   absorptionNodes: document.querySelector('#absorptionNodes'),
-  absorptionInstances: document.querySelector('#absorptionInstances'),
-  absorptionInstanceX: document.querySelector('#absorptionInstanceX'),
-  absorptionInstanceY: document.querySelector('#absorptionInstanceY'),
-  upsertAbsorptionInstance: document.querySelector('#upsertAbsorptionInstance'),
-  absorptionNodeX: document.querySelector('#absorptionNodeX'),
+  absorptionNodeDate: document.querySelector('#absorptionNodeDate'),
+  absorptionNodeHour: document.querySelector('#absorptionNodeHour'),
+  absorptionNodeMinute: document.querySelector('#absorptionNodeMinute'),
   absorptionNodeY: document.querySelector('#absorptionNodeY'),
   upsertAbsorptionNode: document.querySelector('#upsertAbsorptionNode'),
   resetAbsorptionButton: document.querySelector('#resetAbsorptionButton'),
@@ -242,9 +239,7 @@ function zeroAbsorptionModel(substanceId) {
     timeZoneMode: 'local',
     inhalationMinutes: 0,
     holdSeconds: 0,
-    absorptionGraphMode: 'model',
     absorptionNodes: '',
-    absorptionInstances: '',
   };
 }
 
@@ -280,9 +275,7 @@ function getAbsorptionModelFromForm() {
     timeZoneMode: elements.timeZoneMode.value,
     inhalationMinutes: Math.max(0, Number(elements.inhalationMinutes.value) || 0),
     holdSeconds: Math.max(0, Number(elements.holdSeconds.value) || 0),
-    absorptionGraphMode: elements.absorptionGraphMode.value,
     absorptionNodes: elements.absorptionNodes.value,
-    absorptionInstances: elements.absorptionInstances.value,
     updatedAt: new Date().toISOString(),
   };
 }
@@ -297,9 +290,8 @@ function hydrateAbsorptionForm(model) {
   elements.timeZoneMode.value = model.timeZoneMode || 'local';
   elements.inhalationMinutes.value = model.inhalationMinutes;
   elements.holdSeconds.value = model.holdSeconds;
-  elements.absorptionGraphMode.value = model.absorptionGraphMode || 'model';
   elements.absorptionNodes.value = model.absorptionNodes || '';
-  elements.absorptionInstances.value = model.absorptionInstances || '';
+  elements.absorptionNodeDate.value = (model.usageTime || nowLocalDateTime()).slice(0, 10);
 }
 
 function applyPresetToAbsorptionForm() {
@@ -326,19 +318,19 @@ function amountAtHourForDose(hour, model, doseAmount) {
   return absorbedAmount * Math.pow(0.5, eliminationHours / model.halfLifeHours);
 }
 
-function absorptionInstancePoints(model) {
-  return parseGraphNodes(model.absorptionInstances);
+function absorptionNodePoints(model) {
+  return parseGraphNodes(model.absorptionNodes);
 }
 
 function amountAtHour(hour, model) {
   const baseAmount = amountAtHourForDose(hour, model, model.doseAmount);
-  return absorptionInstancePoints(model).reduce((total, instance) => (
+  return absorptionNodePoints(model).reduce((total, instance) => (
     total + amountAtHourForDose(hour - instance.x, model, instance.y)
   ), baseAmount);
 }
 
 function absorptionSeries(model) {
-  const lastInstanceHour = Math.max(0, ...absorptionInstancePoints(model).map((point) => point.x));
+  const lastInstanceHour = Math.max(0, ...absorptionNodePoints(model).map((point) => point.x));
   const visibleHours = Math.max(24, Math.ceil(lastInstanceHour + model.halfLifeHours * 6));
   const pointCount = 145;
   return Array.from({ length: pointCount }, (_, index) => {
@@ -348,13 +340,12 @@ function absorptionSeries(model) {
 }
 
 function updateAbsorptionDashboard(model) {
-  const modelSeries = absorptionSeries(model);
-  const customPoints = parseGraphNodes(model.absorptionNodes);
-  const series = pointsForMode(model.absorptionGraphMode, modelSeries, customPoints);
+  const series = absorptionSeries(model);
+  const nodePoints = absorptionNodePoints(model);
   const peak = series.reduce((highest, point) => (point.y > highest.y ? point : highest), series[0]);
   const remaining24 = amountAtHour(24, model);
   const clearanceHours = model.halfLifeHours * Math.log2(20);
-  const lastInstanceHour = Math.max(0, ...absorptionInstancePoints(model).map((point) => point.x));
+  const lastInstanceHour = Math.max(0, ...absorptionNodePoints(model).map((point) => point.x));
   const visibleHours = Math.max(24, Math.ceil(lastInstanceHour + model.halfLifeHours * 6));
   const unit = model.doseUnit;
 
@@ -375,7 +366,7 @@ function updateAbsorptionDashboard(model) {
     yLabelStart: `0 ${unit}`,
     yLabelEnd: `${decimalNumber.format(Math.max(...series.map((point) => point.y)))} ${unit}`,
     markerX: peak.x,
-    customPoints,
+    customPoints: nodePoints,
   });
 }
 
@@ -417,6 +408,20 @@ function upsertGraphNode(textarea, xInput, yInput) {
   yInput.value = '';
   textarea.dispatchEvent(new Event('input', { bubbles: true }));
   return true;
+}
+
+function upsertAbsorptionNodeFromDateTime() {
+  const dateValue = elements.absorptionNodeDate.value || (elements.usageTime.value || nowLocalDateTime()).slice(0, 10);
+  const hour = Number(elements.absorptionNodeHour.value);
+  const minute = Number(elements.absorptionNodeMinute.value);
+  const amount = Number(elements.absorptionNodeY.value);
+  if (!dateValue || !Number.isFinite(hour) || !Number.isFinite(minute) || !Number.isFinite(amount)) return false;
+
+  const nodeDate = new Date(`${dateValue}T${String(Math.max(0, Math.min(23, hour))).padStart(2, '0')}:${String(Math.max(0, Math.min(59, minute))).padStart(2, '0')}:00`);
+  const startDate = usageDate(getAbsorptionModelFromForm());
+  const hourOffset = Math.max(0, (nodeDate.getTime() - startDate.getTime()) / (60 * 60 * 1000));
+  elements.absorptionNodeDate.value = dateValue;
+  return upsertGraphNode(elements.absorptionNodes, { value: hourOffset }, elements.absorptionNodeY);
 }
 
 function usageDate(model) {
@@ -609,12 +614,9 @@ function start() {
     updateAbsorptionDashboard(nextModel);
   });
 
-  elements.upsertAbsorptionInstance.addEventListener('click', () => {
-    upsertGraphNode(elements.absorptionInstances, elements.absorptionInstanceX, elements.absorptionInstanceY);
-  });
 
   elements.upsertAbsorptionNode.addEventListener('click', () => {
-    upsertGraphNode(elements.absorptionNodes, elements.absorptionNodeX, elements.absorptionNodeY);
+    upsertAbsorptionNodeFromDateTime();
   });
 
   elements.resetAbsorptionButton.addEventListener('click', () => {
