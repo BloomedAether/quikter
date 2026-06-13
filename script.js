@@ -421,12 +421,7 @@ function upsertAbsorptionNodeFromDateTime() {
   const startDate = usageDate(getAbsorptionModelFromForm());
   const hourOffset = Math.max(0, (nodeDate.getTime() - startDate.getTime()) / (60 * 60 * 1000));
   elements.absorptionNodeDate.value = dateValue;
-  const didUpdate = upsertGraphNode(elements.absorptionNodes, { value: hourOffset }, elements.absorptionNodeY);
-  if (didUpdate) {
-    elements.absorptionNodeHour.value = '';
-    elements.absorptionNodeMinute.value = '';
-  }
-  return didUpdate;
+  return upsertGraphNode(elements.absorptionNodes, { value: hourOffset }, elements.absorptionNodeY);
 }
 
 function usageDate(model) {
