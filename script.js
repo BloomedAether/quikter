@@ -46,7 +46,13 @@ const elements = {
   savingsNodeY: document.querySelector('#savingsNodeY'),
   upsertSavingsNode: document.querySelector('#upsertSavingsNode'),
   savingsChart: document.querySelector('#savingsChart'),
+  moneyScale: document.querySelector('#moneyScale'),
+  moneyZoomOut: document.querySelector('#moneyZoomOut'),
+  moneyZoomIn: document.querySelector('#moneyZoomIn'),
   cravingChart: document.querySelector('#cravingChart'),
+  cravingScale: document.querySelector('#cravingScale'),
+  cravingZoomOut: document.querySelector('#cravingZoomOut'),
+  cravingZoomIn: document.querySelector('#cravingZoomIn'),
   latestCraving: document.querySelector('#latestCraving'),
   averageCraving: document.querySelector('#averageCraving'),
   cravingEntryCount: document.querySelector('#cravingEntryCount'),
@@ -77,6 +83,9 @@ const elements = {
   absorptionWindowLabel: document.querySelector('#absorptionWindowLabel'),
   usageTimeContext: document.querySelector('#usageTimeContext'),
   absorptionChart: document.querySelector('#absorptionChart'),
+  absorptionScale: document.querySelector('#absorptionScale'),
+  absorptionZoomOut: document.querySelector('#absorptionZoomOut'),
+  absorptionZoomIn: document.querySelector('#absorptionZoomIn'),
   graphPointModal: document.querySelector('#graphPointModal'),
   graphPointForm: document.querySelector('#graphPointForm'),
   graphPointTitle: document.querySelector('#graphPointTitle'),
@@ -96,6 +105,11 @@ const decimalNumber = new Intl.NumberFormat('en-US', { maximumFractionDigits: 2 
 let currentSubstanceId = 'nicotine';
 const chartStates = new WeakMap();
 let pendingGraphPoint = null;
+const graphViewState = {
+  money: { zoom: 1 },
+  craving: { zoom: 1 },
+  absorption: { zoom: 1 },
+};
 
 function todayISO() {
   return new Date().toISOString().slice(0, 10);
@@ -168,9 +182,42 @@ function updateQuitDashboard(model) {
   drawSavingsChart(model, stats.streak);
 }
 
+function resolveGraphXMax(kind, naturalMax) {
+  const scaleElement = kind === 'money' ? elements.moneyScale : kind === 'craving' ? elements.cravingScale : elements.absorptionScale;
+  const selectedScale = scaleElement?.value || 'all';
+  const scaleMax = selectedScale === 'all' ? naturalMax : Number(selectedScale);
+  const baseMax = Math.max(1, Number.isFinite(scaleMax) ? scaleMax : naturalMax);
+  return Math.max(1, baseMax / graphViewState[kind].zoom);
+}
+
+function visiblePointsForScale(points, xMax) {
+  const visible = points.filter((point) => point.x <= xMax);
+  return visible.length ? visible : [{ x: 0, y: 0 }];
+}
+
+function attachGraphScaleControls(kind, updateCallback) {
+  const scaleElement = kind === 'money' ? elements.moneyScale : kind === 'craving' ? elements.cravingScale : elements.absorptionScale;
+  const zoomOut = kind === 'money' ? elements.moneyZoomOut : kind === 'craving' ? elements.cravingZoomOut : elements.absorptionZoomOut;
+  const zoomIn = kind === 'money' ? elements.moneyZoomIn : kind === 'craving' ? elements.cravingZoomIn : elements.absorptionZoomIn;
+
+  scaleElement.addEventListener('change', () => {
+    graphViewState[kind].zoom = 1;
+    updateCallback();
+  });
+  zoomOut.addEventListener('click', () => {
+    graphViewState[kind].zoom = Math.max(0.25, graphViewState[kind].zoom / 2);
+    updateCallback();
+  });
+  zoomIn.addEventListener('click', () => {
+    graphViewState[kind].zoom = Math.min(16, graphViewState[kind].zoom * 2);
+    updateCallback();
+  });
+}
+
 function drawSavingsChart(model, streak) {
   const actualPoints = parseGraphNodes(model.savingsNodes);
-  const lastDay = Math.max(1, 90, streak, ...actualPoints.map((point) => point.x));
+  const naturalLastDay = Math.max(1, 90, streak, ...actualPoints.map((point) => point.x));
+  const lastDay = resolveGraphXMax('money', naturalLastDay);
   const totalSpent = actualPoints.length ? actualPoints[actualPoints.length - 1].y : 0;
   const lastSpendDay = actualPoints.length ? Math.max(1, actualPoints[actualPoints.length - 1].x) : 1;
   const averagePerDay = totalSpent / lastSpendDay;
@@ -178,7 +225,7 @@ function drawSavingsChart(model, streak) {
     { x: 0, y: 0 },
     { x: lastDay, y: lastDay * averagePerDay },
   ];
-  const points = actualPoints.length ? actualPoints : [{ x: 0, y: 0 }];
+  const points = visiblePointsForScale(actualPoints, lastDay);
 
   drawLineChart(elements.savingsChart, points, {
     lineColor: '#1368ff',
@@ -188,9 +235,10 @@ function drawSavingsChart(model, streak) {
     yLabelStart: '$0',
     yLabelEnd: currency.format(Math.max(1, totalSpent, lastDay * averagePerDay)),
     markerX: actualPoints.length ? actualPoints[actualPoints.length - 1].x : 0,
-    customPoints: actualPoints,
+    customPoints: actualPoints.filter((point) => point.x <= lastDay),
     secondaryPoints: averagePoints,
     secondaryColor: '#15a46b',
+    xMax: lastDay,
   });
 }
 
@@ -217,16 +265,20 @@ function updateCravingDashboard(model) {
   elements.cravingEntryCount.textContent = wholeNumber.format(points.length);
   elements.cravingTrend.textContent = points.length < 2 ? '—' : (latest <= first ? 'Down' : 'Up');
 
-  drawLineChart(elements.cravingChart, points.length ? points : [{ x: 0, y: 0 }], {
+  const naturalLastDay = Math.max(1, ...points.map((point) => point.x));
+  const lastDay = resolveGraphXMax('craving', naturalLastDay);
+
+  drawLineChart(elements.cravingChart, visiblePointsForScale(points, lastDay), {
     lineColor: '#7c3aed',
     fillColor: 'rgba(124, 58, 237, 0.1)',
     xLabelStart: '0d',
-    xLabelEnd: `${wholeNumber.format(Math.max(1, ...points.map((point) => point.x)))}d`,
+    xLabelEnd: `${wholeNumber.format(lastDay)}d`,
     yLabelStart: '0',
     yLabelEnd: '10',
     markerX: points.length ? points[points.length - 1].x : 0,
-    customPoints: points,
+    customPoints: points.filter((point) => point.x <= lastDay),
     fixedYMax: 10,
+    xMax: lastDay,
   });
 }
 
@@ -344,7 +396,8 @@ function amountAtHour(hour, model) {
 
 function absorptionSeries(model) {
   const lastInstanceHour = Math.max(0, ...absorptionNodePoints(model).map((point) => point.x));
-  const visibleHours = Math.max(24, Math.ceil(lastInstanceHour + model.halfLifeHours * 6));
+  const naturalVisibleHours = Math.max(24, Math.ceil(lastInstanceHour + model.halfLifeHours * 6));
+  const visibleHours = resolveGraphXMax('absorption', naturalVisibleHours);
   const pointCount = 145;
   return Array.from({ length: pointCount }, (_, index) => {
     const hour = (visibleHours / (pointCount - 1)) * index;
@@ -359,7 +412,8 @@ function updateAbsorptionDashboard(model) {
   const remaining24 = amountAtHour(24, model);
   const clearanceHours = model.halfLifeHours * Math.log2(20);
   const lastInstanceHour = Math.max(0, ...absorptionNodePoints(model).map((point) => point.x));
-  const visibleHours = Math.max(24, Math.ceil(lastInstanceHour + model.halfLifeHours * 6));
+  const naturalVisibleHours = Math.max(24, Math.ceil(lastInstanceHour + model.halfLifeHours * 6));
+  const visibleHours = resolveGraphXMax('absorption', naturalVisibleHours);
   const unit = model.doseUnit;
 
   elements.substanceName.textContent = substanceDisplayName(model);
@@ -371,7 +425,7 @@ function updateAbsorptionDashboard(model) {
   elements.absorptionWindowLabel.textContent = `${visibleHours} hour view`;
   elements.usageTimeContext.textContent = formatUsageTimeContext(model);
 
-  drawLineChart(elements.absorptionChart, series, {
+  drawLineChart(elements.absorptionChart, visiblePointsForScale(series, visibleHours), {
     lineColor: '#0c43b8',
     fillColor: 'rgba(47, 199, 255, 0.16)',
     xLabelStart: '0h',
@@ -379,7 +433,8 @@ function updateAbsorptionDashboard(model) {
     yLabelStart: `0 ${unit}`,
     yLabelEnd: `${decimalNumber.format(Math.max(...series.map((point) => point.y)))} ${unit}`,
     markerX: peak.x,
-    customPoints: nodePoints,
+    customPoints: nodePoints.filter((point) => point.x <= visibleHours),
+    xMax: visibleHours,
   });
 }
 
@@ -468,7 +523,7 @@ function drawLineChart(canvas, points, config) {
   const height = canvas.height;
   const padding = 48;
   const allXPoints = [...points, ...(config.secondaryPoints || [])];
-  const xMax = Math.max(...allXPoints.map((point) => point.x), 1);
+  const xMax = config.xMax || Math.max(...allXPoints.map((point) => point.x), 1);
   const allYPoints = [...points, ...(config.secondaryPoints || [])];
   const yMax = config.fixedYMax || Math.max(...allYPoints.map((point) => point.y), 1);
   chartStates.set(canvas, { padding, xMax, yMax });
@@ -680,6 +735,10 @@ function start() {
   const absorptionModel = loadAbsorptionModel(currentSubstanceId);
   hydrateAbsorptionForm(absorptionModel);
   updateAbsorptionDashboard(absorptionModel);
+
+  attachGraphScaleControls('money', () => updateQuitDashboard(getQuitModelFromForm()));
+  attachGraphScaleControls('craving', () => updateCravingDashboard(getCravingModelFromForm()));
+  attachGraphScaleControls('absorption', () => updateAbsorptionDashboard(getAbsorptionModelFromForm()));
 
   elements.quitForm.addEventListener('submit', (event) => {
     event.preventDefault();

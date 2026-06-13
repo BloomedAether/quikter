@@ -316,3 +316,21 @@ input::placeholder { color: rgba(15, 35, 71, 0.48); }
   border-radius: 14px;
   background: var(--surface-soft);
 }
+.chart-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: 10px;
+  margin: 0 0 14px;
+}
+.chart-controls label {
+  min-width: 150px;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+.chart-controls select { padding: 9px 11px; }
+.coffee-link {
+  color: var(--blue-dark);
+  font-weight: 900;
+}
+.coffee-footer { margin-top: 10px; }
