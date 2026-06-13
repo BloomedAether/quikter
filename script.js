@@ -40,6 +40,9 @@ const elements = {
   heroAvoided: document.querySelector('#heroAvoided'),
   savingsGraphMode: document.querySelector('#savingsGraphMode'),
   savingsNodes: document.querySelector('#savingsNodes'),
+  savingsNodeX: document.querySelector('#savingsNodeX'),
+  savingsNodeY: document.querySelector('#savingsNodeY'),
+  upsertSavingsNode: document.querySelector('#upsertSavingsNode'),
   savingsChart: document.querySelector('#savingsChart'),
   absorptionForm: document.querySelector('#absorptionForm'),
   substanceSelect: document.querySelector('#substanceSelect'),
@@ -53,6 +56,9 @@ const elements = {
   holdSeconds: document.querySelector('#holdSeconds'),
   absorptionGraphMode: document.querySelector('#absorptionGraphMode'),
   absorptionNodes: document.querySelector('#absorptionNodes'),
+  absorptionNodeX: document.querySelector('#absorptionNodeX'),
+  absorptionNodeY: document.querySelector('#absorptionNodeY'),
+  upsertAbsorptionNode: document.querySelector('#upsertAbsorptionNode'),
   resetAbsorptionButton: document.querySelector('#resetAbsorptionButton'),
   substanceName: document.querySelector('#substanceName'),
   halfLifeLabel: document.querySelector('#halfLifeLabel'),
@@ -305,6 +311,27 @@ function pointsForMode(mode, modelPoints, customPoints) {
   return modelPoints;
 }
 
+function formatGraphNodes(nodes) {
+  return nodes.map((point) => `${Number(point.x.toFixed(4))}, ${Number(point.y.toFixed(4))}`).join('\n');
+}
+
+function upsertGraphNode(textarea, xInput, yInput) {
+  const x = Number(xInput.value);
+  const y = Number(yInput.value);
+  if (!Number.isFinite(x) || !Number.isFinite(y) || x < 0 || y < 0) return false;
+
+  const nodes = parseGraphNodes(textarea.value);
+  const existingIndex = nodes.findIndex((point) => Math.abs(point.x - x) < 0.0001);
+  if (existingIndex >= 0) nodes[existingIndex] = { x, y };
+  else nodes.push({ x, y });
+
+  textarea.value = formatGraphNodes(nodes.sort((a, b) => a.x - b.x));
+  xInput.value = '';
+  yInput.value = '';
+  textarea.dispatchEvent(new Event('input', { bubbles: true }));
+  return true;
+}
+
 function usageDate(model) {
   return model.usageTime ? new Date(model.usageTime) : new Date();
 }
@@ -422,6 +449,10 @@ function start() {
     updateQuitDashboard(nextModel);
   });
 
+  elements.upsertSavingsNode.addEventListener('click', () => {
+    upsertGraphNode(elements.savingsNodes, elements.savingsNodeX, elements.savingsNodeY);
+  });
+
   elements.resetButton.addEventListener('click', () => {
     localStorage.removeItem(quitStorageKey);
     const resetModel = loadQuitModel();
@@ -443,6 +474,10 @@ function start() {
 
   elements.absorptionForm.addEventListener('input', () => {
     updateAbsorptionDashboard(getAbsorptionModelFromForm());
+  });
+
+  elements.upsertAbsorptionNode.addEventListener('click', () => {
+    upsertGraphNode(elements.absorptionNodes, elements.absorptionNodeX, elements.absorptionNodeY);
   });
 
   elements.resetAbsorptionButton.addEventListener('click', () => {

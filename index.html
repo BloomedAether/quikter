@@ -119,7 +119,18 @@
 30, 360"></textarea>
             </label>
           </div>
-          <p class="field-note">Enter one node per line as <strong>day, amount</strong>. Nodes are stored locally with the tracker.</p>
+          <div class="node-editor" aria-label="Savings graph node editor">
+            <label>
+              Node day
+              <input id="savingsNodeX" type="number" min="0" step="0.1" placeholder="Day" />
+            </label>
+            <label>
+              Node dollars
+              <input id="savingsNodeY" type="number" min="0" step="0.01" placeholder="Amount" />
+            </label>
+            <button class="button secondary" type="button" id="upsertSavingsNode">Add / update node</button>
+          </div>
+          <p class="field-note">Enter one node per line as <strong>day, amount</strong>, or use the node box above to add a new point or update an existing day. Nodes are stored locally with the tracker.</p>
           <div class="control-row">
             <button class="button primary" type="submit">Save locally</button>
             <button class="button ghost" type="button" id="resetButton">Wipe demo data</button>
@@ -211,7 +222,18 @@
 6, 2.5"></textarea>
             </label>
           </div>
-          <p class="field-note">Enter one node per line as <strong>hour since usage, amount</strong>. The selected day and timezone control the usage-time label.</p>
+          <div class="node-editor" aria-label="Absorption graph node editor">
+            <label>
+              Node hour
+              <input id="absorptionNodeX" type="number" min="0" step="0.05" placeholder="Hour" />
+            </label>
+            <label>
+              Node amount
+              <input id="absorptionNodeY" type="number" min="0" step="0.01" placeholder="Amount" />
+            </label>
+            <button class="button secondary" type="button" id="upsertAbsorptionNode">Add / update node</button>
+          </div>
+          <p class="field-note">Enter one node per line as <strong>hour since usage, amount</strong>, or use the node box above to add a new point or update an existing hour. The selected day and timezone control the usage-time label.</p>
           <div class="control-row">
             <button class="button primary" type="submit">Save graph inputs</button>
             <button class="button ghost" type="button" id="resetAbsorptionButton">Reset graph</button>
