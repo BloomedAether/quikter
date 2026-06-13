@@ -38,6 +38,8 @@ const elements = {
   heroStreak: document.querySelector('#heroStreak'),
   heroSaved: document.querySelector('#heroSaved'),
   heroAvoided: document.querySelector('#heroAvoided'),
+  savingsGraphMode: document.querySelector('#savingsGraphMode'),
+  savingsNodes: document.querySelector('#savingsNodes'),
   savingsChart: document.querySelector('#savingsChart'),
   absorptionForm: document.querySelector('#absorptionForm'),
   substanceSelect: document.querySelector('#substanceSelect'),
@@ -46,8 +48,11 @@ const elements = {
   doseAmount: document.querySelector('#doseAmount'),
   doseUnit: document.querySelector('#doseUnit'),
   usageTime: document.querySelector('#usageTime'),
+  timeZoneMode: document.querySelector('#timeZoneMode'),
   inhalationMinutes: document.querySelector('#inhalationMinutes'),
   holdSeconds: document.querySelector('#holdSeconds'),
+  absorptionGraphMode: document.querySelector('#absorptionGraphMode'),
+  absorptionNodes: document.querySelector('#absorptionNodes'),
   resetAbsorptionButton: document.querySelector('#resetAbsorptionButton'),
   substanceName: document.querySelector('#substanceName'),
   halfLifeLabel: document.querySelector('#halfLifeLabel'),
@@ -56,6 +61,7 @@ const elements = {
   remainingAmount: document.querySelector('#remainingAmount'),
   clearanceTime: document.querySelector('#clearanceTime'),
   absorptionWindowLabel: document.querySelector('#absorptionWindowLabel'),
+  usageTimeContext: document.querySelector('#usageTimeContext'),
   absorptionChart: document.querySelector('#absorptionChart'),
 };
 
@@ -88,6 +94,8 @@ function getQuitModelFromForm() {
     dailyCost: Math.max(0, Number(elements.dailyCost.value) || 0),
     dailyUses: Math.max(0, Number(elements.dailyUses.value) || 0),
     craving: Math.max(0, Number(elements.craving.value) || 0),
+    savingsGraphMode: elements.savingsGraphMode.value,
+    savingsNodes: elements.savingsNodes.value,
     updatedAt: new Date().toISOString(),
   };
 }
@@ -99,6 +107,8 @@ function loadQuitModel() {
     dailyCost: 12,
     dailyUses: 20,
     craving: 4,
+    savingsGraphMode: 'model',
+    savingsNodes: '',
   });
 }
 
@@ -109,6 +119,8 @@ function hydrateQuitForm(model) {
   elements.dailyUses.value = model.dailyUses;
   elements.craving.value = model.craving;
   elements.cravingValue.textContent = model.craving;
+  elements.savingsGraphMode.value = model.savingsGraphMode || 'model';
+  elements.savingsNodes.value = model.savingsNodes || '';
 }
 
 function calculateQuitStats(model) {
@@ -140,7 +152,9 @@ function updateQuitDashboard(model) {
 }
 
 function drawSavingsChart(model, streak) {
-  const points = Array.from({ length: 91 }, (_, day) => ({ x: day, y: day * model.dailyCost }));
+  const modelPoints = Array.from({ length: 91 }, (_, day) => ({ x: day, y: day * model.dailyCost }));
+  const customPoints = parseGraphNodes(model.savingsNodes);
+  const points = pointsForMode(model.savingsGraphMode, modelPoints, customPoints);
   drawLineChart(elements.savingsChart, points, {
     lineColor: '#1368ff',
     fillColor: 'rgba(19, 104, 255, 0.08)',
@@ -148,7 +162,8 @@ function drawSavingsChart(model, streak) {
     xLabelEnd: '90d',
     yLabelStart: '$0',
     yLabelEnd: currency.format(Math.max(1, 90 * model.dailyCost)),
-    markerX: Math.min(90, streak),
+    markerX: Math.min(Math.max(...points.map((point) => point.x), 90), streak),
+    customPoints,
   });
 }
 
@@ -170,6 +185,7 @@ function loadAbsorptionModel() {
     doseAmount: 10,
     doseUnit: 'mg',
     usageTime: nowLocalDateTime(),
+    timeZoneMode: 'local',
     inhalationMinutes: 5,
     holdSeconds: 3,
   });
@@ -184,8 +200,11 @@ function getAbsorptionModelFromForm() {
     doseAmount: Math.max(0, Number(elements.doseAmount.value) || 0),
     doseUnit: elements.doseUnit.value.trim() || preset.unit,
     usageTime: elements.usageTime.value || nowLocalDateTime(),
+    timeZoneMode: elements.timeZoneMode.value,
     inhalationMinutes: Math.max(0, Number(elements.inhalationMinutes.value) || 0),
     holdSeconds: Math.max(0, Number(elements.holdSeconds.value) || 0),
+    absorptionGraphMode: elements.absorptionGraphMode.value,
+    absorptionNodes: elements.absorptionNodes.value,
     updatedAt: new Date().toISOString(),
   };
 }
@@ -197,8 +216,11 @@ function hydrateAbsorptionForm(model) {
   elements.doseAmount.value = model.doseAmount;
   elements.doseUnit.value = model.doseUnit;
   elements.usageTime.value = model.usageTime;
+  elements.timeZoneMode.value = model.timeZoneMode || 'local';
   elements.inhalationMinutes.value = model.inhalationMinutes;
   elements.holdSeconds.value = model.holdSeconds;
+  elements.absorptionGraphMode.value = model.absorptionGraphMode || 'model';
+  elements.absorptionNodes.value = model.absorptionNodes || '';
 }
 
 function applyPresetToAbsorptionForm() {
@@ -234,7 +256,9 @@ function absorptionSeries(model) {
 }
 
 function updateAbsorptionDashboard(model) {
-  const series = absorptionSeries(model);
+  const modelSeries = absorptionSeries(model);
+  const customPoints = parseGraphNodes(model.absorptionNodes);
+  const series = pointsForMode(model.absorptionGraphMode, modelSeries, customPoints);
   const peak = series.reduce((highest, point) => (point.y > highest.y ? point : highest), series[0]);
   const remaining24 = amountAtHour(24, model);
   const clearanceHours = model.halfLifeHours * Math.log2(20);
@@ -248,6 +272,7 @@ function updateAbsorptionDashboard(model) {
   elements.remainingAmount.textContent = `${decimalNumber.format(remaining24)} ${unit}`;
   elements.clearanceTime.textContent = `${decimalNumber.format(clearanceHours)}h`;
   elements.absorptionWindowLabel.textContent = `${visibleHours} hour view`;
+  elements.usageTimeContext.textContent = formatUsageTimeContext(model);
 
   drawLineChart(elements.absorptionChart, series, {
     lineColor: '#0c43b8',
@@ -257,7 +282,47 @@ function updateAbsorptionDashboard(model) {
     yLabelStart: `0 ${unit}`,
     yLabelEnd: `${decimalNumber.format(Math.max(...series.map((point) => point.y)))} ${unit}`,
     markerX: peak.x,
+    customPoints,
   });
+}
+
+function parseGraphNodes(rawNodes) {
+  return (rawNodes || '')
+    .split(/\n+/)
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .map((line) => line.split(/[,	 ]+/).map(Number))
+    .filter(([x, y]) => Number.isFinite(x) && Number.isFinite(y) && x >= 0 && y >= 0)
+    .map(([x, y]) => ({ x, y }))
+    .sort((a, b) => a.x - b.x);
+}
+
+function pointsForMode(mode, modelPoints, customPoints) {
+  if (mode === 'nodes' && customPoints.length) return customPoints;
+  if (mode === 'combined' && customPoints.length) {
+    return [...modelPoints, ...customPoints].sort((a, b) => a.x - b.x);
+  }
+  return modelPoints;
+}
+
+function usageDate(model) {
+  return model.usageTime ? new Date(model.usageTime) : new Date();
+}
+
+function formatUsageTimeContext(model) {
+  const date = usageDate(model);
+  const timeZone = model.timeZoneMode === 'utc' ? 'UTC' : Intl.DateTimeFormat().resolvedOptions().timeZone;
+  const label = new Intl.DateTimeFormat('en-US', {
+    weekday: 'long',
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+    timeZone,
+    timeZoneName: 'short',
+  }).format(date);
+  return `Usage starts ${label}; graph hours are relative to that day and timezone.`;
 }
 
 function drawLineChart(canvas, points, config) {
@@ -305,6 +370,15 @@ function drawLineChart(canvas, points, config) {
   ctx.strokeStyle = config.lineColor;
   ctx.lineWidth = 4;
   ctx.stroke();
+
+  if (config.customPoints?.length) {
+    ctx.fillStyle = '#0c43b8';
+    config.customPoints.forEach((point) => {
+      const x = padding + (point.x / xMax) * (width - padding * 2);
+      const y = height - padding - (point.y / yMax) * (height - padding * 2);
+      ctx.fillRect(x - 5, y - 5, 10, 10);
+    });
+  }
 
   const markerPoint = points.reduce((closest, point) => (
     Math.abs(point.x - config.markerX) < Math.abs(closest.x - config.markerX) ? point : closest

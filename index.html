@@ -19,6 +19,7 @@
       <div class="nav-links">
         <a href="#tracker">Quit tracker</a>
         <a href="#absorption">Absorption graph</a>
+        <a href="#time">Time</a>
         <a href="#privacy">Local data</a>
       </div>
     </nav>
@@ -102,6 +103,23 @@
               <input id="dailyUses" type="number" min="0" step="1" value="20" />
             </label>
           </div>
+          <div class="two-column">
+            <label>
+              Savings graph input mode
+              <select id="savingsGraphMode">
+                <option value="model">Model curve</option>
+                <option value="nodes">Custom nodes only</option>
+                <option value="combined">Model + custom nodes</option>
+              </select>
+            </label>
+            <label>
+              Add savings nodes (day, dollars)
+              <textarea id="savingsNodes" rows="4" placeholder="7, 84
+14, 168
+30, 360"></textarea>
+            </label>
+          </div>
+          <p class="field-note">Enter one node per line as <strong>day, amount</strong>. Nodes are stored locally with the tracker.</p>
           <div class="control-row">
             <button class="button primary" type="submit">Save locally</button>
             <button class="button ghost" type="button" id="resetButton">Wipe demo data</button>
@@ -162,14 +180,38 @@
               <input id="usageTime" type="datetime-local" />
             </label>
             <label>
+              Day / timezone
+              <select id="timeZoneMode">
+                <option value="local">My device timezone</option>
+                <option value="utc">UTC</option>
+              </select>
+            </label>
+            <label>
               Inhalation / absorption window (min)
               <input id="inhalationMinutes" type="number" min="0" step="0.1" value="5" />
             </label>
+          </div>
+          <div class="three-column">
             <label>
               Hold time (sec)
               <input id="holdSeconds" type="number" min="0" step="1" value="3" />
             </label>
+            <label>
+              Absorption graph input mode
+              <select id="absorptionGraphMode">
+                <option value="model">Half-life model</option>
+                <option value="nodes">Custom nodes only</option>
+                <option value="combined">Model + custom nodes</option>
+              </select>
+            </label>
+            <label>
+              Add absorption nodes (hour, amount)
+              <textarea id="absorptionNodes" rows="4" placeholder="0.25, 4
+1, 9
+6, 2.5"></textarea>
+            </label>
           </div>
+          <p class="field-note">Enter one node per line as <strong>hour since usage, amount</strong>. The selected day and timezone control the usage-time label.</p>
           <div class="control-row">
             <button class="button primary" type="submit">Save graph inputs</button>
             <button class="button ghost" type="button" id="resetAbsorptionButton">Reset graph</button>
@@ -185,6 +227,7 @@
           </div>
           <div class="chart-card">
             <div class="chart-title"><h3>Absorption + elimination curve</h3><span id="absorptionWindowLabel">24 hour view</span></div>
+            <p class="time-context" id="usageTimeContext">Usage time shown in your device timezone.</p>
             <canvas id="absorptionChart" width="900" height="360" aria-label="Absorption and half-life line chart" role="img"></canvas>
           </div>
         </section>
@@ -201,6 +244,18 @@
         <article><h3>Elimination</h3><code>A(t) = A₀ × 0.5^(t / half_life)</code><p>Half-life presets and custom values power the remaining amount estimate.</p></article>
         <article><h3>Absorption</h3><code>input(t) = dose × min(1, t / window)</code><p>Inhalation and hold settings shape how quickly the amount reaches peak.</p></article>
       </div>
+    </section>
+
+    <section id="time" class="privacy-section time-section">
+      <div>
+        <p class="eyebrow">Day and timezone</p>
+        <h2>Graphs line up with your clock.</h2>
+      </div>
+      <ul class="privacy-list">
+        <li><strong>Device-local time.</strong> Quit-day streaks use the calendar day on this computer.</li>
+        <li><strong>Timezone-aware labels.</strong> Absorption usage time can be displayed as local time or UTC.</li>
+        <li><strong>Manual nodes.</strong> Custom graph points are plotted relative to day or hour inputs you type.</li>
+      </ul>
     </section>
 
     <section id="privacy" class="privacy-section">

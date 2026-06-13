@@ -112,3 +112,19 @@ footer { color: var(--muted); text-align: center; padding: 32px 18px 48px; }
   h1 { font-size: 3rem; }
   .hero { min-height: auto; }
 }
+textarea {
+  width: 100%;
+  border: 1px solid var(--line);
+  background: #fff;
+  color: var(--text);
+  border-radius: 14px;
+  padding: 12px 13px;
+  font: inherit;
+  resize: vertical;
+  min-height: 104px;
+  box-shadow: 0 1px 0 rgba(15,35,71,0.03);
+}
+textarea:focus { outline: 3px solid rgba(19,104,255,0.15); border-color: var(--blue); }
+.field-note, .time-context { color: var(--muted); line-height: 1.55; margin: -4px 0 0; font-size: 0.92rem; }
+.time-context { margin: -4px 0 14px; }
+.time-section { margin-bottom: 32px; }
