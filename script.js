@@ -49,10 +49,12 @@ const elements = {
   moneyScale: document.querySelector('#moneyScale'),
   moneyZoomOut: document.querySelector('#moneyZoomOut'),
   moneyZoomIn: document.querySelector('#moneyZoomIn'),
+  moneyScaleLabel: document.querySelector('#moneyScaleLabel'),
   cravingChart: document.querySelector('#cravingChart'),
   cravingScale: document.querySelector('#cravingScale'),
   cravingZoomOut: document.querySelector('#cravingZoomOut'),
   cravingZoomIn: document.querySelector('#cravingZoomIn'),
+  cravingScaleLabel: document.querySelector('#cravingScaleLabel'),
   latestCraving: document.querySelector('#latestCraving'),
   averageCraving: document.querySelector('#averageCraving'),
   cravingEntryCount: document.querySelector('#cravingEntryCount'),
@@ -86,6 +88,7 @@ const elements = {
   absorptionScale: document.querySelector('#absorptionScale'),
   absorptionZoomOut: document.querySelector('#absorptionZoomOut'),
   absorptionZoomIn: document.querySelector('#absorptionZoomIn'),
+  absorptionScaleLabel: document.querySelector('#absorptionScaleLabel'),
   graphPointModal: document.querySelector('#graphPointModal'),
   graphPointForm: document.querySelector('#graphPointForm'),
   graphPointTitle: document.querySelector('#graphPointTitle'),
@@ -182,6 +185,21 @@ function updateQuitDashboard(model) {
   drawSavingsChart(model, stats.streak);
 }
 
+function formatAxisSpan(value, unit) {
+  const rounded = Number(value.toFixed(2));
+  const formatted = Number.isInteger(rounded) ? wholeNumber.format(rounded) : decimalNumber.format(rounded);
+  return `${formatted}${unit}`;
+}
+
+function updateScaleStatus(kind, xMax) {
+  const label = kind === 'money' ? elements.moneyScaleLabel : kind === 'craving' ? elements.cravingScaleLabel : elements.absorptionScaleLabel;
+  const unit = kind === 'absorption' ? 'h' : 'd';
+  const selectedScale = (kind === 'money' ? elements.moneyScale : kind === 'craving' ? elements.cravingScale : elements.absorptionScale).value;
+  const zoom = graphViewState[kind].zoom;
+  const rangeLabel = selectedScale === 'all' ? 'all data' : formatAxisSpan(Number(selectedScale), unit);
+  label.textContent = `Viewing ${formatAxisSpan(xMax, unit)} (${rangeLabel}${zoom !== 1 ? `, ${decimalNumber.format(zoom)}× zoom` : ''})`;
+}
+
 function resolveGraphXMax(kind, naturalMax) {
   const scaleElement = kind === 'money' ? elements.moneyScale : kind === 'craving' ? elements.cravingScale : elements.absorptionScale;
   const selectedScale = scaleElement?.value || 'all';
@@ -226,12 +244,13 @@ function drawSavingsChart(model, streak) {
     { x: lastDay, y: lastDay * averagePerDay },
   ];
   const points = visiblePointsForScale(actualPoints, lastDay);
+  updateScaleStatus('money', lastDay);
 
   drawLineChart(elements.savingsChart, points, {
     lineColor: '#1368ff',
     fillColor: 'rgba(19, 104, 255, 0.08)',
     xLabelStart: '0d',
-    xLabelEnd: `${wholeNumber.format(lastDay)}d`,
+    xLabelEnd: formatAxisSpan(lastDay, 'd'),
     yLabelStart: '$0',
     yLabelEnd: currency.format(Math.max(1, totalSpent, lastDay * averagePerDay)),
     markerX: actualPoints.length ? actualPoints[actualPoints.length - 1].x : 0,
@@ -268,11 +287,13 @@ function updateCravingDashboard(model) {
   const naturalLastDay = Math.max(1, ...points.map((point) => point.x));
   const lastDay = resolveGraphXMax('craving', naturalLastDay);
 
+  updateScaleStatus('craving', lastDay);
+
   drawLineChart(elements.cravingChart, visiblePointsForScale(points, lastDay), {
     lineColor: '#7c3aed',
     fillColor: 'rgba(124, 58, 237, 0.1)',
     xLabelStart: '0d',
-    xLabelEnd: `${wholeNumber.format(lastDay)}d`,
+    xLabelEnd: formatAxisSpan(lastDay, 'd'),
     yLabelStart: '0',
     yLabelEnd: '10',
     markerX: points.length ? points[points.length - 1].x : 0,
@@ -422,14 +443,15 @@ function updateAbsorptionDashboard(model) {
   elements.peakEta.textContent = `around ${decimalNumber.format(peak.x)}h`;
   elements.remainingAmount.textContent = `${decimalNumber.format(remaining24)} ${unit}`;
   elements.clearanceTime.textContent = `${decimalNumber.format(clearanceHours)}h`;
-  elements.absorptionWindowLabel.textContent = `${visibleHours} hour view`;
+  updateScaleStatus('absorption', visibleHours);
+  elements.absorptionWindowLabel.textContent = `${formatAxisSpan(visibleHours, 'h')} view`;
   elements.usageTimeContext.textContent = formatUsageTimeContext(model);
 
   drawLineChart(elements.absorptionChart, visiblePointsForScale(series, visibleHours), {
     lineColor: '#0c43b8',
     fillColor: 'rgba(47, 199, 255, 0.16)',
     xLabelStart: '0h',
-    xLabelEnd: `${visibleHours}h`,
+    xLabelEnd: formatAxisSpan(visibleHours, 'h'),
     yLabelStart: `0 ${unit}`,
     yLabelEnd: `${decimalNumber.format(Math.max(...series.map((point) => point.y)))} ${unit}`,
     markerX: peak.x,

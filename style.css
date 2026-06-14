@@ -334,3 +334,14 @@ input::placeholder { color: rgba(15, 35, 71, 0.48); }
   font-weight: 900;
 }
 .coffee-footer { margin-top: 10px; }
+.scale-status {
+  display: inline-flex;
+  align-items: center;
+  min-height: 38px;
+  padding: 8px 12px;
+  border-radius: 999px;
+  background: var(--blue-soft);
+  color: var(--blue-dark);
+  font-weight: 900;
+  font-size: 0.9rem;
+}
